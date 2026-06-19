@@ -1,0 +1,726 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:intl/intl.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/helpers/formatters.dart';
+import '../controllers/member_model.dart';
+import '../controllers/member_stats.dart';
+import '../controllers/member_repository.dart';
+import '../controllers/member_list_controller.dart';
+import 'member_form_view.dart';
+
+class MemberDetailView extends StatefulWidget {
+  final MemberModel? member;
+  final String gymId;
+  const MemberDetailView({super.key, this.member, this.gymId = ''});
+
+  @override
+  State<MemberDetailView> createState() => _MemberDetailViewState();
+}
+
+class _MemberDetailViewState extends State<MemberDetailView> {
+  final MemberRepository _repository = Get.find<MemberRepository>();
+  late final MemberModel _member;
+  MemberStats? _stats;
+  bool _isLoadingStats = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _member = widget.member ?? (Get.arguments as MemberModel);
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final stats = await _repository.getMemberStats(_member.memberId);
+      setState(() {
+        _stats = stats;
+        _isLoadingStats = false;
+      });
+    } catch (_) {
+      setState(() => _isLoadingStats = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final member = _member;
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(PhosphorIconsRegular.arrowLeft),
+            onPressed: () => Get.back(),
+          ),
+          title: Text(member.fullName),
+          bottom: const TabBar(
+            isScrollable: true,
+            tabs: [
+              Tab(text: 'Overview'),
+              Tab(text: 'Attendance'),
+              Tab(text: 'Payments'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _buildOverviewTab(member),
+            _buildAttendanceTab(member),
+            _buildPaymentsTab(member),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverviewTab(MemberModel member) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeaderCard(member),
+          const SizedBox(height: AppSpacing.md),
+          if (_isLoadingStats)
+            const Center(child: CircularProgressIndicator())
+          else if (_stats != null)
+            _buildStatsGrid(_stats!),
+          const SizedBox(height: AppSpacing.md),
+          _buildPersonalInfoCard(member),
+          const SizedBox(height: AppSpacing.md),
+          _buildMembershipCard(member),
+          const SizedBox(height: AppSpacing.md),
+          _buildPhysicalStatsCard(member),
+          if (member.qrData != null && member.qrData!.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            _buildQrDataCard(member),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          _buildActionButtons(member),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderCard(MemberModel member) {
+    final expiryDays = member.expiryDate != null
+        ? DateTime.parse(member.expiryDate!).difference(DateTime.now()).inDays
+        : null;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            _buildAvatar(member, radius: 36),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(member.fullName, style: AppTextStyles.headingMd),
+                  if (member.phone != null)
+                    Text(
+                      Formatters.phone(member.phone!),
+                      style: AppTextStyles.bodySm,
+                    ),
+                  const SizedBox(height: AppSpacing.xs),
+                  _buildStatusBadge(member.status),
+                ],
+              ),
+            ),
+            if (expiryDays != null)
+              Column(
+                children: [
+                  Text(
+                    expiryDays >= 0 ? '$expiryDays' : '---',
+                    style: AppTextStyles.displayLg.copyWith(
+                      color: expiryDays < 0
+                          ? AppColors.danger
+                          : AppColors.primary,
+                      fontSize: 28,
+                    ),
+                  ),
+                  Text(
+                    expiryDays >= 0 ? 'days left' : 'expired',
+                    style: AppTextStyles.bodySm.copyWith(
+                      color: expiryDays < 0 ? AppColors.danger : null,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsGrid(MemberStats stats) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Attendance Summary', style: AppTextStyles.headingSm),
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                _miniStat(
+                  'This Month',
+                  '${stats.currentMonthAttendance}',
+                  AppColors.primary,
+                ),
+                _miniStat(
+                  'Last Month',
+                  '${stats.previousMonthAttendance}',
+                  AppColors.info,
+                ),
+                _miniStat(
+                  'Lifetime',
+                  '${stats.lifetimeAttendance}',
+                  AppColors.success,
+                ),
+                _miniStat(
+                  'Avg/Month',
+                  stats.avgVisitsPerMonth.toStringAsFixed(1),
+                  AppColors.info,
+                ),
+              ],
+            ),
+            const Divider(height: AppSpacing.lg),
+            Text('Payment Summary', style: AppTextStyles.headingSm),
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                _miniStat(
+                  'Total Paid',
+                  Formatters.currency(stats.totalPaid),
+                  AppColors.success,
+                ),
+                _miniStat(
+                  'Total Due',
+                  Formatters.currency(stats.totalDue),
+                  AppColors.warning,
+                ),
+                _miniStat(
+                  'Last Payment',
+                  stats.lastPaymentDate != null
+                      ? Formatters.shortDate(stats.lastPaymentDate)
+                      : 'N/A',
+                  AppColors.info,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _miniStat(String label, String value, Color color) {
+    return Container(
+      width: (Get.width - AppSpacing.md * 4) / 2,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style: AppTextStyles.headingSm.copyWith(color: color, fontSize: 18),
+          ),
+          Text(label, style: AppTextStyles.bodySm),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonalInfoCard(MemberModel member) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  PhosphorIconsRegular.userCircle,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text('Personal Information', style: AppTextStyles.headingSm),
+              ],
+            ),
+            const Divider(height: AppSpacing.lg),
+            _detailRow(
+              PhosphorIconsRegular.user,
+              'Father Name',
+              member.fatherName ?? '-',
+            ),
+            _detailRow(
+              PhosphorIconsRegular.identificationCard,
+              'CNIC',
+              member.cnic ?? '-',
+            ),
+            _detailRow(
+              PhosphorIconsRegular.genderIntersex,
+              'Gender',
+              member.gender ?? '-',
+            ),
+            _detailRow(
+              PhosphorIconsRegular.calendar,
+              'Joining Date',
+              member.dob != null
+                  ? Formatters.shortDate(DateTime.tryParse(member.dob!))
+                  : '-',
+            ),
+            _detailRow(PhosphorIconsRegular.mapPin, 'Address', member.address ?? '-'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMembershipCard(MemberModel member) {
+    final expiryDays = member.expiryDate != null
+        ? DateTime.parse(member.expiryDate!).difference(DateTime.now()).inDays
+        : null;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  PhosphorIconsRegular.identificationBadge,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text('Membership', style: AppTextStyles.headingSm),
+              ],
+            ),
+            const Divider(height: AppSpacing.lg),
+            _detailRow(PhosphorIconsRegular.tag, 'Package', member.packageId ?? '-'),
+            _detailRow(
+              PhosphorIconsRegular.calendar,
+              'Start Date',
+              member.startDate != null
+                  ? Formatters.shortDate(DateTime.tryParse(member.startDate!))
+                  : '-',
+            ),
+            _detailRow(
+              PhosphorIconsRegular.clock,
+              'Expiry Date',
+              member.expiryDate != null
+                  ? Formatters.shortDate(DateTime.tryParse(member.expiryDate!))
+                  : '-',
+            ),
+            _detailRow(
+              PhosphorIconsRegular.hourglass,
+              'Remaining',
+              expiryDays != null ? Formatters.remainingDays(expiryDays) : '-',
+              valueColor: expiryDays != null && expiryDays < 0
+                  ? AppColors.danger
+                  : null,
+            ),
+            _detailRow(
+              PhosphorIconsRegular.calendar,
+              'Registered',
+              Formatters.shortDate(DateTime.tryParse(member.registrationDate)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhysicalStatsCard(MemberModel member) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  PhosphorIconsRegular.heart,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text('Physical Stats', style: AppTextStyles.headingSm),
+              ],
+            ),
+            const Divider(height: AppSpacing.lg),
+            _detailRow(
+              PhosphorIconsRegular.ruler,
+              'Height',
+              member.height != null ? '${member.height} cm' : '-',
+            ),
+            _detailRow(
+              PhosphorIconsRegular.scales,
+              'Weight',
+              member.weight != null ? '${member.weight} kg' : '-',
+            ),
+            _detailRow(
+              PhosphorIconsRegular.heart,
+              'BMI',
+              member.bmi != null ? member.bmi!.toStringAsFixed(1) : '-',
+            ),
+            _detailRow(
+              PhosphorIconsRegular.target,
+              'Fitness Goal',
+              member.fitnessGoal ?? '-',
+            ),
+            _detailRow(
+              PhosphorIconsRegular.fingerprint,
+              'Fingerprint',
+              member.fingerprintTemplate != null ? 'Registered' : 'Not Registered',
+              valueColor: member.fingerprintTemplate != null
+                  ? AppColors.success
+                  : AppColors.textSecondaryL,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQrDataCard(MemberModel member) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  PhosphorIconsRegular.qrCode,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text('QR Data', style: AppTextStyles.headingSm),
+              ],
+            ),
+            const Divider(height: AppSpacing.lg),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.bgLight,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              ),
+              child: SelectableText(
+                member.qrData!,
+                style: AppTextStyles.bodyMd.copyWith(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(MemberModel member) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openEditForm(member),
+                    icon: const Icon(PhosphorIconsRegular.pencilSimple, size: 18),
+                    label: const Text('Edit'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.info,
+                      side: const BorderSide(color: AppColors.info),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _confirmDelete(member),
+                    icon: const Icon(PhosphorIconsRegular.trash, size: 18),
+                    label: const Text('Delete'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      side: const BorderSide(color: AppColors.danger),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(PhosphorIconsRegular.fingerprint, size: 18),
+                    label: const Text('Mark Attendance'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(PhosphorIconsRegular.coin, size: 18),
+                    label: const Text('View Payments'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(
+    IconData icon,
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: AppColors.textSecondaryL),
+          const SizedBox(width: AppSpacing.sm),
+          SizedBox(
+            width: 100,
+            child: Text('$label:', style: AppTextStyles.bodySm),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: AppTextStyles.bodyMd.copyWith(color: valueColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttendanceTab(MemberModel member) {
+    return _stats != null
+        ? SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Attendance Details',
+                          style: AppTextStyles.headingSm,
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _detailRow(
+                          PhosphorIconsRegular.calendarCheck,
+                          'This Month',
+                          '${_stats!.currentMonthAttendance}',
+                        ),
+                        _detailRow(
+                          PhosphorIconsRegular.calendar,
+                          'Last Month',
+                          '${_stats!.previousMonthAttendance}',
+                        ),
+                        _detailRow(
+                          PhosphorIconsRegular.clock,
+                          'Lifetime',
+                          '${_stats!.lifetimeAttendance}',
+                        ),
+                        _detailRow(
+                          PhosphorIconsRegular.trendUp,
+                          'Avg/Month',
+                          _stats!.avgVisitsPerMonth.toStringAsFixed(1),
+                        ),
+                        if (_stats!.lastVisit != null)
+                          _detailRow(
+                            PhosphorIconsRegular.clock,
+                            'Last Visit',
+                            Formatters.shortDate(_stats!.lastVisit),
+                          ),
+                        _detailRow(
+                          PhosphorIconsRegular.checkCircle,
+                          'Attendance %',
+                          Formatters.attendancePercent(
+                            _stats!.lifetimeAttendance,
+                            _stats!.totalVisits,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        : const Center(child: Text('No attendance data available'));
+  }
+
+  Widget _buildPaymentsTab(MemberModel member) {
+    return _stats != null
+        ? SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Payment Details', style: AppTextStyles.headingSm),
+                        const SizedBox(height: AppSpacing.md),
+                        _detailRow(
+                          PhosphorIconsRegular.coin,
+                          'Total Paid',
+                          Formatters.currency(_stats!.totalPaid),
+                        ),
+                        _detailRow(
+                          PhosphorIconsRegular.warningCircle,
+                          'Total Due',
+                          Formatters.currency(_stats!.totalDue),
+                        ),
+                        if (_stats!.lastPaymentDate != null)
+                          _detailRow(
+                            PhosphorIconsRegular.calendar,
+                            'Last Payment',
+                            Formatters.shortDate(_stats!.lastPaymentDate),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        : const Center(child: Text('No payment data available'));
+  }
+
+  Widget _buildAvatar(MemberModel member, {double radius = 24}) {
+    if (member.photoPath != null && member.photoPath!.isNotEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundImage: FileImage(File(member.photoPath!)),
+        onBackgroundImageError: (_, __) {},
+        child: const Icon(PhosphorIconsRegular.user),
+      );
+    }
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primarySurface,
+      child: const Icon(PhosphorIconsRegular.user, color: AppColors.primary),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    switch (status) {
+      case 'active':
+        color = AppColors.success;
+      case 'expired':
+        color = AppColors.danger;
+      case 'paused':
+        color = AppColors.warning;
+      case 'blocked':
+        color = AppColors.neutralGray;
+      default:
+        color = AppColors.neutralGray;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: AppTextStyles.bodySm.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(MemberModel member) {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Delete Member'),
+        content: Text(
+          'Are you sure you want to delete "${member.fullName}"?\nAll related data will be permanently removed.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              Get.back();
+              Get.find<MemberListController>().deleteMember(member.memberId);
+              Get.back();
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openEditForm(MemberModel member) async {
+    final result = await Get.to(
+      () => MemberFormView(gymId: widget.gymId, member: member),
+    );
+    if (result == true) {
+      setState(() {});
+      _loadStats();
+    }
+  }
+}
