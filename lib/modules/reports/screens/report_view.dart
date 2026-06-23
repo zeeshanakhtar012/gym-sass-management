@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/helpers/formatters.dart';
 import '../../../core/helpers/responsive.dart';
 import '../../../widgets/app_drawer.dart';
+import '../../auth/controllers/auth_service.dart';
 import '../controllers/report_controller.dart';
 
 class ReportView extends GetView<ReportController> {
   const ReportView({super.key});
+
+  String get _gymId => Get.find<AuthService>().currentGymId ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +26,7 @@ class ReportView extends GetView<ReportController> {
           actions: [
             IconButton(
               icon: const Icon(PhosphorIconsRegular.arrowClockwise),
-              onPressed: () => _loadAll(''),
+              onPressed: () => _loadAll(),
             ),
           ],
           bottom: const TabBar(
@@ -69,54 +71,109 @@ class ReportView extends GetView<ReportController> {
       padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
       child: Obx(() {
         final range = controller.selectedDateRange.value;
-        return Row(
+        return Column(
           children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => _pickDateRange(),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Date Range',
-                    isDense: true,
-                    prefixIcon: Icon(PhosphorIconsRegular.calendarBlank, size: 18),
-                  ),
-                  child: Text(
-                    range != null
-                        ? '${Formatters.shortDate(range.start)} - ${Formatters.shortDate(range.end)}'
-                        : 'This Month',
-                    style: AppTextStyles.bodySm,
+            Row(
+              children: [
+                _presetChip('Today', () => _setPreset('today')),
+                const SizedBox(width: AppSpacing.xs),
+                _presetChip('This Week', () => _setPreset('week')),
+                const SizedBox(width: AppSpacing.xs),
+                _presetChip('This Month', () => _setPreset('month')),
+                const Spacer(),
+                PopupMenuButton<String>(
+                  icon: const Icon(PhosphorIconsRegular.downloadSimple),
+                  onSelected: (v) {
+                    if (v == 'PDF') {
+                      controller.exportPdf(_gymId);
+                    } else if (v == 'Excel') {
+                      controller.exportExcel(_gymId);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'PDF', child: ListTile(
+                      leading: Icon(PhosphorIconsRegular.filePdf, color: AppColors.danger),
+                      title: Text('Export PDF'),
+                      contentPadding: EdgeInsets.zero,
+                    )),
+                    const PopupMenuItem(value: 'Excel', child: ListTile(
+                      leading: Icon(PhosphorIconsRegular.fileXls, color: AppColors.success),
+                      title: Text('Export Excel'),
+                      contentPadding: EdgeInsets.zero,
+                    )),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _pickDateRange(),
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Custom Range',
+                        isDense: true,
+                        prefixIcon: Icon(PhosphorIconsRegular.calendarBlank, size: 18),
+                      ),
+                      child: Text(
+                        range != null
+                            ? '${Formatters.shortDate(range.start)} - ${Formatters.shortDate(range.end)}'
+                            : 'This Month',
+                        style: AppTextStyles.bodySm,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            IconButton(
-              icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
-              onPressed: () => _loadAll(''),
-              color: AppColors.primary,
-            ),
-            PopupMenuButton<String>(
-              icon: const Icon(PhosphorIconsRegular.downloadSimple),
-              onSelected: (v) {
-                Get.snackbar('Export', '$v export will be available soon');
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'PDF', child: ListTile(
-                  leading: Icon(PhosphorIconsRegular.filePdf, color: AppColors.danger),
-                  title: Text('Export PDF'),
-                  contentPadding: EdgeInsets.zero,
-                )),
-                const PopupMenuItem(value: 'Excel', child: ListTile(
-                  leading: Icon(PhosphorIconsRegular.fileXls, color: AppColors.success),
-                  title: Text('Export Excel'),
-                  contentPadding: EdgeInsets.zero,
-                )),
+                const SizedBox(width: AppSpacing.sm),
+                IconButton(
+                  icon: const Icon(PhosphorIconsRegular.magnifyingGlass),
+                  onPressed: () => _loadAll(),
+                  color: AppColors.primary,
+                ),
               ],
             ),
           ],
         );
       }),
     );
+  }
+
+  Widget _presetChip(String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.primarySurface,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          border: Border.all(color: AppColors.borderDark),
+        ),
+        child: Text(label, style: AppTextStyles.bodySm.copyWith(
+          color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 11,
+        )),
+      ),
+    );
+  }
+
+  void _setPreset(String preset) {
+    final now = DateTime.now();
+    DateTime start;
+    switch (preset) {
+      case 'today':
+        start = now;
+        break;
+      case 'week':
+        start = now.subtract(Duration(days: now.weekday - 1));
+        break;
+      case 'month':
+      default:
+        start = DateTime(now.year, now.month, 1);
+        break;
+    }
+    controller.selectedDateRange.value = DateTimeRange(start: start, end: now);
+    _loadAll();
   }
 
   Future<void> _pickDateRange() async {
@@ -133,16 +190,15 @@ class ReportView extends GetView<ReportController> {
     }
   }
 
-  void _loadAll(String gymId) {
-    controller.loadOverviewReport(gymId);
+  void _loadAll() {
+    final gymId = _gymId;
     final range = controller.selectedDateRange.value;
+    String? start, end;
     if (range != null) {
-      final start = Formatters.date(range.start);
-      final end = Formatters.date(range.end);
-      controller.loadFinancialReport(gymId, start, end);
-      controller.loadAttendanceReport(gymId, start, end);
+      start = Formatters.date(range.start);
+      end = Formatters.date(range.end);
     }
-    controller.loadMemberReport(gymId);
+    controller.loadAll(gymId, startDate: start, endDate: end);
   }
 }
 

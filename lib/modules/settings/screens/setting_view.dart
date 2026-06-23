@@ -4,8 +4,9 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/helpers/responsive.dart';
+import '../../../core/helpers/validators.dart';
 import '../../../widgets/app_drawer.dart';
+import '../../auth/controllers/auth_service.dart';
 import '../controllers/setting_controller.dart';
 
 class SettingView extends GetView<SettingController> {
@@ -13,6 +14,7 @@ class SettingView extends GetView<SettingController> {
 
   @override
   Widget build(BuildContext context) {
+    final isSuperAdmin = Get.find<AuthService>().isSuperAdmin;
     return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
@@ -33,6 +35,12 @@ class SettingView extends GetView<SettingController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _buildPasswordSection(),
+              const SizedBox(height: AppSpacing.lg),
+              if (isSuperAdmin) ...[
+                _buildGymResetSection(),
+                const SizedBox(height: AppSpacing.lg),
+              ],
               _buildAppearanceSection(),
               const SizedBox(height: AppSpacing.lg),
               _buildCurrencySection(),
@@ -60,6 +68,277 @@ class SettingView extends GetView<SettingController> {
           Text(title, style: AppTextStyles.headingMd),
         ],
       ),
+    );
+  }
+
+  Widget _buildPasswordSection() {
+    final oldPwdCtrl = TextEditingController();
+    final newPwdCtrl = TextEditingController();
+    final confirmPwdCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final obscureOld = true.obs;
+    final obscureNew = true.obs;
+    final obscureConfirm = true.obs;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Password', PhosphorIconsRegular.lock),
+        const Divider(),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  Obx(() => TextFormField(
+                    controller: oldPwdCtrl,
+                    obscureText: obscureOld.value,
+                    decoration: InputDecoration(
+                      labelText: 'Current Password',
+                      prefixIcon: const Icon(PhosphorIconsRegular.lock, size: 18),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureOld.value ? PhosphorIconsRegular.eyeSlash : PhosphorIconsRegular.eye,
+                          size: 18,
+                        ),
+                        onPressed: () => obscureOld.toggle(),
+                      ),
+                      isDense: true,
+                    ),
+                    validator: (v) => Validators.required(v, 'Current password'),
+                  )),
+                  const SizedBox(height: AppSpacing.md),
+                  Obx(() => TextFormField(
+                    controller: newPwdCtrl,
+                    obscureText: obscureNew.value,
+                    decoration: InputDecoration(
+                      labelText: 'New Password',
+                      prefixIcon: const Icon(PhosphorIconsRegular.lock, size: 18),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureNew.value ? PhosphorIconsRegular.eyeSlash : PhosphorIconsRegular.eye,
+                          size: 18,
+                        ),
+                        onPressed: () => obscureNew.toggle(),
+                      ),
+                      isDense: true,
+                    ),
+                    validator: (v) => Validators.minLength(v, 6, 'New password'),
+                  )),
+                  const SizedBox(height: AppSpacing.md),
+                  Obx(() => TextFormField(
+                    controller: confirmPwdCtrl,
+                    obscureText: obscureConfirm.value,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm New Password',
+                      prefixIcon: const Icon(PhosphorIconsRegular.lock, size: 18),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscureConfirm.value ? PhosphorIconsRegular.eyeSlash : PhosphorIconsRegular.eye,
+                          size: 18,
+                        ),
+                        onPressed: () => obscureConfirm.toggle(),
+                      ),
+                      isDense: true,
+                    ),
+                    validator: (v) {
+                      if (v != newPwdCtrl.text) return 'Passwords do not match';
+                      return null;
+                    },
+                  )),
+                  const SizedBox(height: AppSpacing.md),
+                  Obx(() {
+                    if (controller.passwordChangeSuccess.value) {
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        child: Text(
+                          'Password changed successfully',
+                          style: AppTextStyles.bodySm.copyWith(color: AppColors.success),
+                        ),
+                      );
+                    }
+                    if (controller.passwordError.value.isNotEmpty) {
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        child: Text(
+                          controller.passwordError.value,
+                          style: AppTextStyles.bodySm.copyWith(color: AppColors.danger),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: controller.isChangingPassword.value
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              await controller.changeMyPassword(
+                                oldPwdCtrl.text, newPwdCtrl.text,
+                              );
+                              if (controller.passwordChangeSuccess.value) {
+                                oldPwdCtrl.clear();
+                                newPwdCtrl.clear();
+                                confirmPwdCtrl.clear();
+                              }
+                            },
+                      icon: controller.isChangingPassword.value
+                          ? const SizedBox(
+                              width: 18, height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(PhosphorIconsRegular.check, size: 18),
+                      label: const Text('Update Password'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGymResetSection() {
+    final newPwdCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Reset Gym Password', PhosphorIconsRegular.buildings),
+        const Divider(),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Form(
+              key: formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Reset a gym owner\'s password (no old password required)',
+                    style: AppTextStyles.bodySm.copyWith(color: AppColors.textSecondaryD),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Obx(() => DropdownButtonFormField<String>(
+                    value: controller.selectedGymId.value.isEmpty
+                        ? null
+                        : controller.selectedGymId.value,
+                    decoration: const InputDecoration(
+                      labelText: 'Select Gym',
+                      prefixIcon: Icon(PhosphorIconsRegular.buildings, size: 18),
+                      isDense: true,
+                    ),
+                    items: controller.allGyms.map((g) {
+                      final name = g['name'] as String? ?? '';
+                      final phone = g['phone'] as String? ?? '';
+                      final gymId = g['gym_id'] as String? ?? '';
+                      return DropdownMenuItem(
+                        value: gymId,
+                        child: Text('$name ($phone)'),
+                      );
+                    }).toList(),
+                    onChanged: (v) {
+                      if (v != null) controller.selectedGymId.value = v;
+                    },
+                    validator: (v) => v == null || v.isEmpty ? 'Please select a gym' : null,
+                  )),
+                  const SizedBox(height: AppSpacing.md),
+                  TextFormField(
+                    controller: newPwdCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'New Password',
+                      prefixIcon: Icon(PhosphorIconsRegular.lock, size: 18),
+                      isDense: true,
+                    ),
+                    validator: (v) => Validators.minLength(v, 6, 'New password'),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Obx(() {
+                    if (controller.gymResetSuccess.value) {
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        child: Text(
+                          'Gym password reset successfully',
+                          style: AppTextStyles.bodySm.copyWith(color: AppColors.success),
+                        ),
+                      );
+                    }
+                    if (controller.gymResetError.value.isNotEmpty) {
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        child: Text(
+                          controller.gymResetError.value,
+                          style: AppTextStyles.bodySm.copyWith(color: AppColors.danger),
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
+                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: controller.isResettingGymPassword.value
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              await controller.resetGymPassword(newPwdCtrl.text);
+                              if (controller.gymResetSuccess.value) {
+                                newPwdCtrl.clear();
+                              }
+                            },
+                      icon: controller.isResettingGymPassword.value
+                          ? const SizedBox(
+                              width: 18, height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(PhosphorIconsRegular.check, size: 18),
+                      label: const Text('Reset Gym Password'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.warning,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

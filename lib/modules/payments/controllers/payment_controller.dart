@@ -4,8 +4,10 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
+import '../../auth/controllers/auth_service.dart';
 
 class PaymentController extends GetxController {
+  final AuthService _authService = Get.find<AuthService>();
   final RxList<Map<String, dynamic>> payments = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> filteredPayments = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> packages = <Map<String, dynamic>>[].obs;
@@ -15,6 +17,11 @@ class PaymentController extends GetxController {
   final RxInt todayRevenue = 0.obs;
   final RxInt monthRevenue = 0.obs;
   final RxInt totalPaymentsCount = 0.obs;
+
+  String _resolveGymId(String gymId) {
+    if (gymId.isNotEmpty) return gymId;
+    return _authService.currentGymId ?? '';
+  }
 
   @override
   void onInit() {
@@ -30,6 +37,7 @@ class PaymentController extends GetxController {
   }
 
   Future<void> loadPayments(String gymId) async {
+    gymId = _resolveGymId(gymId);
     log('[PaymentController] loadPayments called gymId=$gymId');
     isLoading.value = true;
     try {
@@ -55,6 +63,7 @@ class PaymentController extends GetxController {
   }
 
   Future<void> loadPackages(String gymId) async {
+    gymId = _resolveGymId(gymId);
     log('[PaymentController] loadPackages called gymId=$gymId');
     try {
       final db = await DatabaseHelper.instance.database;
@@ -172,6 +181,7 @@ class PaymentController extends GetxController {
   }
 
   Future<void> deletePayment(String id, String gymId) async {
+    gymId = _resolveGymId(gymId);
     log('[PaymentController] deletePayment called id=$id gymId=$gymId');
     try {
       final db = await DatabaseHelper.instance.database;

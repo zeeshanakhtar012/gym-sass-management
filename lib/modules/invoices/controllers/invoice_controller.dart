@@ -2,13 +2,20 @@ import 'dart:developer';
 
 import 'package:get/get.dart';
 import '../../../core/database/database_helper.dart';
+import '../../auth/controllers/auth_service.dart';
 
 class InvoiceController extends GetxController {
+  final AuthService _authService = Get.find<AuthService>();
   final RxList<Map<String, dynamic>> invoices = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> filteredInvoices = <Map<String, dynamic>>[].obs;
   final RxBool isLoading = true.obs;
   final RxString searchQuery = ''.obs;
   final RxString statusFilter = 'All'.obs;
+
+  String _resolveGymId(String gymId) {
+    if (gymId.isNotEmpty) return gymId;
+    return _authService.currentGymId ?? '';
+  }
 
   @override
   void onInit() {
@@ -24,6 +31,7 @@ class InvoiceController extends GetxController {
   }
 
   Future<void> loadInvoices(String gymId) async {
+    gymId = _resolveGymId(gymId);
     log('[InvoiceController] loadInvoices called gymId=$gymId');
     isLoading.value = true;
     try {
@@ -81,6 +89,7 @@ class InvoiceController extends GetxController {
   }
 
   Future<void> deleteInvoice(String id, String gymId) async {
+    gymId = _resolveGymId(gymId);
     log('[InvoiceController] deleteInvoice called id=$id gymId=$gymId');
     try {
       final db = await DatabaseHelper.instance.database;

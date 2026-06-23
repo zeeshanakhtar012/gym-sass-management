@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'auth_service.dart';
-import '../screens/change_password_view.dart';
 import '../../dashboard/screens/dashboard_view.dart';
 import '../../dashboard/bindings/dashboard_binding.dart';
 
@@ -56,14 +55,8 @@ class AuthController extends GetxController {
     try {
       await authService.login(username, password, isGym: isGymLogin.value);
       log('[AuthController] login successful');
-      if (authService.mustChangePassword) {
-        log('[AuthController] login - redirecting to change-password');
-        Get.to(() => const ChangePasswordView());
-      } else {
-        log('[AuthController] login - redirecting to dashboard');
-        DashboardBinding().dependencies();
-        Get.off(() => const DashboardView());
-      }
+      DashboardBinding().dependencies();
+      Get.off(() => const DashboardView());
     } catch (e, stack) {
       log('[AuthController] login failed: $e');
       log('[AuthController] stack: $stack');

@@ -78,6 +78,14 @@ class AuthDao {
     log('[AuthDao] updateSuperAdminMustChangePassword completed');
   }
 
+  Future<List<Map<String, dynamic>>> getAllGyms() async {
+    log('[AuthDao] getAllGyms called');
+    final db = await _dbHelper.database;
+    final results = await db.query('gyms', orderBy: 'name ASC');
+    log('[AuthDao] getAllGyms found ${results.length} gyms');
+    return results;
+  }
+
   Future<void> saveSession(String sessionJson) async {
     log('[AuthDao] saveSession called');
     final db = await _dbHelper.database;

@@ -108,6 +108,12 @@ class AppDrawer extends StatelessWidget {
                     builder: () => const ReportView(),
                     binding: ReportBinding(),
                   ),
+                  _navItem(
+                    icon: PhosphorIconsRegular.gear,
+                    label: 'Settings',
+                    builder: () => const SettingView(),
+                    binding: SettingBinding(),
+                  ),
                 ] else ...[
                   _navItem(
                     icon: PhosphorIconsRegular.gauge,

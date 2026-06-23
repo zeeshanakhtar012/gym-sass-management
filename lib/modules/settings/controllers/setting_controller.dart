@@ -1,20 +1,34 @@
-import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:get/get.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
 import '../../../core/database/database_helper.dart';
 import '../../auth/controllers/auth_service.dart';
+import '../../auth/controllers/auth_repository.dart';
+import '../../auth/controllers/auth_dao.dart';
 import '../../auth/screens/login_view.dart';
 
 class SettingController extends GetxController {
   final RxMap<String, dynamic> settings = <String, dynamic>{}.obs;
   final RxBool isLoading = true.obs;
   final AuthService _authService = Get.find<AuthService>();
+  final AuthRepository _authRepository = Get.find<AuthRepository>();
+  final AuthDao _authDao = Get.find<AuthDao>();
+
+  // Password change state
+  final RxBool isChangingPassword = false.obs;
+  final RxBool passwordChangeSuccess = false.obs;
+  final RxString passwordError = ''.obs;
+
+  // Gym reset state
+  final RxList<Map<String, dynamic>> allGyms = <Map<String, dynamic>>[].obs;
+  final RxString selectedGymId = ''.obs;
+  final RxBool isResettingGymPassword = false.obs;
+  final RxString gymResetError = ''.obs;
+  final RxBool gymResetSuccess = false.obs;
 
   String _resolveGymId(String gymId) {
     if (gymId.isNotEmpty) return gymId;
@@ -26,6 +40,9 @@ class SettingController extends GetxController {
     super.onInit();
     log('[SettingController] onInit');
     loadSettings('');
+    if (_authService.isSuperAdmin) {
+      loadAllGyms();
+    }
   }
 
   @override
@@ -62,7 +79,7 @@ class SettingController extends GetxController {
     }
   }
 
-  Future<void> _createDefaults(db, String gymId) async {
+  Future<void> _createDefaults(Database db, String gymId) async {
     log('[SettingController] _createDefaults for gymId=$gymId');
     await db.insert('settings', {
       'gym_id': gymId,
@@ -107,6 +124,77 @@ class SettingController extends GetxController {
   Future<void> updateBackupFrequency(String gymId, String value) async {
     await updateSetting(gymId, 'backup_frequency', value);
     Get.snackbar('Success', 'Backup frequency updated to $value');
+  }
+
+  /// Change the current user's password (verifies old password).
+  Future<void> changeMyPassword(String oldPassword, String newPassword) async {
+    log('[SettingController] changeMyPassword called');
+    isChangingPassword.value = true;
+    passwordError.value = '';
+    passwordChangeSuccess.value = false;
+    try {
+      final session = _authService.currentSession.value;
+      if (session == null) {
+        passwordError.value = 'No active session';
+        return;
+      }
+      final success = await _authRepository.changePassword(
+        session, oldPassword, newPassword,
+      );
+      if (success) {
+        passwordChangeSuccess.value = true;
+        log('[SettingController] changeMyPassword successful');
+      } else {
+        passwordError.value = 'Current password is incorrect';
+        log('[SettingController] changeMyPassword failed - wrong password');
+      }
+    } catch (e, stack) {
+      log('[SettingController] changeMyPassword error: $e');
+      log('[SettingController] stack: $stack');
+      passwordError.value = 'Failed to change password: $e';
+    } finally {
+      isChangingPassword.value = false;
+    }
+  }
+
+  /// Superadmin: reset a gym's password without verifying old password.
+  Future<void> resetGymPassword(String newPassword) async {
+    log('[SettingController] resetGymPassword called');
+    gymResetError.value = '';
+    gymResetSuccess.value = false;
+    isResettingGymPassword.value = true;
+    try {
+      final gymId = selectedGymId.value;
+      if (gymId.isEmpty) {
+        gymResetError.value = 'Please select a gym';
+        return;
+      }
+      final success = await _authService.resetGymPassword(gymId, newPassword);
+      if (success) {
+        gymResetSuccess.value = true;
+        log('[SettingController] resetGymPassword successful');
+      } else {
+        gymResetError.value = 'Failed to reset password';
+      }
+    } catch (e, stack) {
+      log('[SettingController] resetGymPassword error: $e');
+      log('[SettingController] stack: $stack');
+      gymResetError.value = 'Failed to reset password: $e';
+    } finally {
+      isResettingGymPassword.value = false;
+    }
+  }
+
+  Future<void> loadAllGyms() async {
+    log('[SettingController] loadAllGyms called');
+    try {
+      final gyms = await _authDao.getAllGyms();
+      allGyms.value = gyms;
+      log('[SettingController] loadAllGyms loaded ${gyms.length} gyms');
+    } catch (e, stack) {
+      log('[SettingController] loadAllGyms failed: $e');
+      log('[SettingController] stack: $stack');
+    }
   }
 
   Future<void> exportDatabase() async {

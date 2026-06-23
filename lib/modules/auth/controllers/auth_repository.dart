@@ -94,6 +94,20 @@ class AuthRepository {
     return false;
   }
 
+  Future<bool> resetGymPassword(String gymId, String newPassword) async {
+    log('[AuthRepository] resetGymPassword called gymId=$gymId');
+    try {
+      final newHash = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+      await _authDao.updateGymPassword(gymId, newHash);
+      log('[AuthRepository] resetGymPassword successful');
+      return true;
+    } catch (e, stack) {
+      log('[AuthRepository] resetGymPassword failed: $e');
+      log('[AuthRepository] stack: $stack');
+      return false;
+    }
+  }
+
   Future<bool> verifyPassword(SessionModel session, String password) async {
     log('[AuthRepository] verifyPassword called for role=${session.role}');
     if (session.role == 'super_admin') {

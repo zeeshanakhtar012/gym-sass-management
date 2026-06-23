@@ -88,6 +88,11 @@ class AuthService extends GetxService {
     await _authDao.clearSession();
   }
 
+  Future<bool> resetGymPassword(String gymId, String newPassword) async {
+    log('[AuthService] resetGymPassword called gymId=$gymId');
+    return _authRepository.resetGymPassword(gymId, newPassword);
+  }
+
   Future<SessionModel?> restoreSession() async {
     log('[AuthService] restoreSession called');
     try {

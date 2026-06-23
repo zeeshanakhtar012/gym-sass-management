@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
+import '../../../core/database/database_helper.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -486,7 +487,7 @@ class _MemberDetailViewState extends State<MemberDetailView> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => _markAttendance(member),
                     icon: const Icon(PhosphorIconsRegular.fingerprint, size: 18),
                     label: const Text('Mark Attendance'),
                     style: ElevatedButton.styleFrom(
@@ -497,7 +498,7 @@ class _MemberDetailViewState extends State<MemberDetailView> {
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => _viewPayments(member),
                     icon: const Icon(PhosphorIconsRegular.coin, size: 18),
                     label: const Text('View Payments'),
                     style: ElevatedButton.styleFrom(
@@ -686,6 +687,163 @@ class _MemberDetailViewState extends State<MemberDetailView> {
           color: color,
           fontWeight: FontWeight.w600,
           fontSize: 11,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _markAttendance(MemberModel member) async {
+    final db = await DatabaseHelper.instance.database;
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final now = DateFormat('HH:mm').format(DateTime.now());
+
+    final existing = await db.query('attendance',
+      where: 'gym_id = ? AND member_id = ? AND date = ? AND check_out IS NULL',
+      whereArgs: [widget.gymId, member.memberId, today],
+    );
+
+    if (existing.isNotEmpty) {
+      final checkedInAt = existing.first['check_in'] as String? ?? '';
+      final confirmed = await Get.dialog<bool>(
+        AlertDialog(
+          title: const Text('Already Checked In'),
+          content: Text(
+            '${member.fullName} checked in at $checkedInAt.\nDo you want to check out?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(result: false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Get.back(result: true),
+              style: TextButton.styleFrom(foregroundColor: AppColors.warning),
+              child: const Text('Check Out'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed == true) {
+        await db.update(
+          'attendance',
+          {'check_out': now},
+          where: 'attendance_id = ?',
+          whereArgs: [existing.first['attendance_id']],
+        );
+        Get.snackbar('Success', '${member.fullName} checked out at $now');
+      }
+    } else {
+      await db.insert('attendance', {
+        'gym_id': widget.gymId,
+        'member_id': member.memberId,
+        'date': today,
+        'check_in': now,
+        'method': 'manual',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      Get.snackbar(
+        'Success',
+        '${member.fullName} checked in at $now',
+        backgroundColor: AppColors.success,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  void _viewPayments(MemberModel member) async {
+    final db = await DatabaseHelper.instance.database;
+    final rows = await db.query('payments',
+      where: 'member_id = ?',
+      whereArgs: [member.memberId],
+      orderBy: 'created_at DESC',
+    );
+
+    if (rows.isEmpty) {
+      Get.snackbar('No Payments', 'No payment records found for ${member.fullName}');
+      return;
+    }
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceDark,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Payments', style: AppTextStyles.headingSm),
+                IconButton(
+                  icon: const Icon(PhosphorIconsRegular.x, size: 20),
+                  onPressed: () => Get.back(),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              member.fullName,
+              style: AppTextStyles.bodyMd.copyWith(
+                color: AppColors.textSecondaryD,
+              ),
+            ),
+            const Divider(height: AppSpacing.lg),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: rows.length,
+                itemBuilder: (context, index) {
+                  final p = rows[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: ListTile(
+                      dense: true,
+                      leading: CircleAvatar(
+                        backgroundColor: AppColors.primarySurface,
+                        child: Icon(
+                          PhosphorIconsRegular.coin,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        Formatters.currency(p['total'] as int? ?? 0),
+                        style: AppTextStyles.bodyMd.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${p['method'] ?? '-'}  •  ${Formatters.shortDate(DateTime.tryParse(p['payment_date'] as String? ?? ''))}',
+                        style: AppTextStyles.bodySm,
+                      ),
+                      trailing: p['remarks'] != null && (p['remarks'] as String).isNotEmpty
+                          ? Tooltip(
+                              message: p['remarks'] as String,
+                              child: Icon(
+                                PhosphorIconsRegular.note,
+                                size: 16,
+                                color: AppColors.textSecondaryD,
+                              ),
+                            )
+                          : null,
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Get.back(),
+                child: const Text('Close'),
+              ),
+            ),
+          ],
         ),
       ),
     );
