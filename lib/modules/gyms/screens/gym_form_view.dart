@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../core/helpers/validators.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../core/helpers/validators.dart';
 import '../controllers/gym_form_controller.dart';
 
 class GymFormView extends GetView<GymFormController> {

@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/gym_model.dart';
 import '../controllers/gym_list_controller.dart';
 import '../controllers/gym_form_controller.dart';
@@ -154,7 +154,7 @@ class GymListView extends GetView<GymListController> {
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.textSecondaryL),
+          Icon(icon, size: 16, color: AppColors.textSecondaryD),
           const SizedBox(width: AppSpacing.sm),
           Text(text, style: AppTextStyles.bodySm),
         ],
@@ -178,7 +178,7 @@ class GymListView extends GetView<GymListController> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
+                  headingRowColor: WidgetStateProperty.all(AppColors.surfaceElevated),
                   columns: const [
                     DataColumn(label: Text('Logo')),
                     DataColumn(label: Text('Name')),
@@ -310,7 +310,7 @@ class GymListView extends GetView<GymListController> {
           const SizedBox(height: AppSpacing.md),
           Text(
             'No gyms found',
-            style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryL),
+            style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryD),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(

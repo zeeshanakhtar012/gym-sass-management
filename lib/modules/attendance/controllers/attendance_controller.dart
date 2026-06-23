@@ -1,10 +1,19 @@
 import 'dart:developer';
+import 'dart:typed_data';
 
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
+import '../../../core/services/dartafis_service.dart';
+import '../../../core/services/zkteco_scanner_service.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../auth/controllers/auth_service.dart';
 
 class AttendanceController extends GetxController {
+  final ZKTecoBiometricService _scanner = ZKTecoBiometricService();
+  final DartafisService _dartafis = DartafisService();
+  final AuthService _authService = Get.find<AuthService>();
+
   final RxList<Map<String, dynamic>> attendanceRecords = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> filteredRecords = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> members = <Map<String, dynamic>>[].obs;
@@ -15,6 +24,11 @@ class AttendanceController extends GetxController {
   final RxString searchQuery = ''.obs;
   final RxBool isCheckInMode = true.obs;
 
+  String _resolveGymId(String gymId) {
+    if (gymId.isNotEmpty) return gymId;
+    return _authService.currentGymId ?? '';
+  }
+
   int get todayPresentCount =>
       checkedInMembers.where((m) => m['check_out'] == null).length;
 
@@ -22,9 +36,10 @@ class AttendanceController extends GetxController {
   void onInit() {
     super.onInit();
     log('[AttendanceController] onInit');
-    loadAttendance('');
-    loadMembers('');
-    loadCheckedInToday('');
+    final gymId = _resolveGymId('');
+    loadAttendance(gymId);
+    loadMembers(gymId);
+    loadCheckedInToday(gymId);
   }
 
   @override
@@ -34,6 +49,7 @@ class AttendanceController extends GetxController {
   }
 
   Future<void> loadAttendance(String gymId) async {
+    gymId = _resolveGymId(gymId);
     log('[AttendanceController] loadAttendance called gymId=$gymId');
     isLoading.value = true;
     try {
@@ -58,6 +74,7 @@ class AttendanceController extends GetxController {
   }
 
   Future<void> loadMembers(String gymId) async {
+    gymId = _resolveGymId(gymId);
     log('[AttendanceController] loadMembers called gymId=$gymId');
     try {
       final db = await DatabaseHelper.instance.database;
@@ -76,17 +93,71 @@ class AttendanceController extends GetxController {
     }
   }
 
+  /// Load members who have fingerprint data available.
+  ///
+  /// Supports both the new `fingerprint_data` column (dartafis serialized
+  /// template) and legacy `fingerprint_image` (raw grayscale image).
+  /// Legacy members are migrated on-the-fly: the raw image is loaded,
+  /// a dartafis template is extracted, and the result is saved to
+  /// `fingerprint_data` so that future lookups are instant.
   Future<List<Map<String, dynamic>>> getFingerprintMembers(String gymId) async {
+    gymId = _resolveGymId(gymId);
     log('[AttendanceController] getFingerprintMembers called gymId=$gymId');
     try {
       final db = await DatabaseHelper.instance.database;
-      final rows = await db.query('members',
-        where: 'gym_id = ? AND status = ? AND fingerprint_template IS NOT NULL',
-        whereArgs: [gymId, 'active'],
-        orderBy: 'full_name ASC',
-      );
-      log('[AttendanceController] getFingerprintMembers found ${rows.length} members');
-      return rows;
+      final rows = await db.rawQuery('''
+        SELECT m.*, p.name AS package_name
+        FROM members m
+        LEFT JOIN packages p ON m.package_id = p.package_id
+        WHERE m.gym_id = ? AND m.status = 'active'
+          AND (m.fingerprint_data IS NOT NULL OR m.fingerprint_image IS NOT NULL)
+        ORDER BY m.full_name ASC
+      ''', [gymId]);
+
+      if (rows.isEmpty) {
+        log('[AttendanceController] getFingerprintMembers: none found');
+        return [];
+      }
+
+      // --- On-the-fly migration of legacy fingerprint_image records ---
+      int migrated = 0;
+      for (final row in rows) {
+        final fpData = row['fingerprint_data'] as Uint8List?;
+        if (fpData != null) continue;
+
+        final fpImage = row['fingerprint_image'] as Uint8List?;
+        if (fpImage == null || fpImage.length != AppConstants.fingerprintImageSize) {
+          continue;
+        }
+
+        log('[AttendanceController] migrating legacy fingerprint for '
+            'member ${row['member_id']}');
+        final serialized = await _dartafis.migrateLegacyImage(fpImage);
+        if (serialized != null && _dartafis.isValidTemplate(serialized)) {
+          await db.update(
+            'members',
+            {'fingerprint_data': serialized},
+            where: 'member_id = ?',
+            whereArgs: [row['member_id']],
+          );
+          row['fingerprint_data'] = serialized;
+          migrated++;
+          log('[AttendanceController] migrated legacy fingerprint for '
+              'member ${row['member_id']}');
+        }
+      }
+      if (migrated > 0) {
+        log('[AttendanceController] migrated $migrated legacy fingerprint records');
+      }
+
+      // Return only members with valid fingerprint_data
+      final fpMembers = rows.where((r) =>
+          r['fingerprint_data'] is Uint8List &&
+          (r['fingerprint_data'] as Uint8List).isNotEmpty)
+          .toList();
+      log('[AttendanceController] getFingerprintMembers: '
+          '${fpMembers.length} members ready');
+      return fpMembers;
     } catch (e, stack) {
       log('[AttendanceController] getFingerprintMembers failed: $e');
       log('[AttendanceController] stack: $stack');
@@ -94,7 +165,59 @@ class AttendanceController extends GetxController {
     }
   }
 
+  /// Perform a fingerprint-based check-in using dartafis template matching.
+  ///
+  /// Returns a user-facing status message.
+  Future<String> fingerprintCheckIn(String gymId) async {
+    gymId = _resolveGymId(gymId);
+    log('[AttendanceController] fingerprintCheckIn called gymId=$gymId');
+
+    final fpMembers = await getFingerprintMembers(gymId);
+    if (fpMembers.isEmpty) {
+      log('[AttendanceController] No members with registered fingerprints found');
+      return 'No members with registered fingerprints found.';
+    }
+
+    // Build the candidate template list, keeping the member order stable.
+    final memberIds = fpMembers.map((m) => m['member_id'] as String).toList();
+    final candidateTemplates = fpMembers
+        .map((m) => m['fingerprint_data'] as Uint8List)
+        .toList();
+
+    log('[AttendanceController] Matching against ${candidateTemplates.length} '
+        'templates');
+    final matchResult = await _scanner.identifyByDartafis(
+      candidateTemplates: candidateTemplates,
+      scoreThreshold: AppConstants.fingerprintMatchThreshold,
+    );
+
+    if (matchResult == null || !matchResult.isMatched) {
+      log('[AttendanceController] Fingerprint not recognized '
+          '(threshold=${AppConstants.fingerprintMatchThreshold})');
+      return 'Fingerprint not recognized. Please try again.';
+    }
+
+    if (matchResult.templateIndex < 0 ||
+        matchResult.templateIndex >= memberIds.length) {
+      log('[AttendanceController] Match index ${matchResult.templateIndex} '
+          'out of range (0-${memberIds.length - 1})');
+      return 'Fingerprint not recognized. Please try again.';
+    }
+
+    final matchedMemberId = memberIds[matchResult.templateIndex];
+    log('[AttendanceController] Match score: '
+        '${matchResult.score.toStringAsFixed(1)} '
+        'for template #${matchResult.templateIndex}');
+    log('[AttendanceController] User matched: '
+        '${fpMembers[matchResult.templateIndex]['full_name']} '
+        '(score=${matchResult.score.toStringAsFixed(1)}, '
+        'threshold=${AppConstants.fingerprintMatchThreshold})');
+
+    return await checkIn(gymId, matchedMemberId, method: 'fingerprint');
+  }
+
   Future<void> loadCheckedInToday(String gymId) async {
+    gymId = _resolveGymId(gymId);
     log('[AttendanceController] loadCheckedInToday called gymId=$gymId');
     try {
       final db = await DatabaseHelper.instance.database;
@@ -163,6 +286,7 @@ class AttendanceController extends GetxController {
   }
 
   Future<String> checkIn(String gymId, String memberId, {String method = 'manual'}) async {
+    gymId = _resolveGymId(gymId);
     log('[AttendanceController] checkIn called gymId=$gymId memberId=$memberId method=$method');
     try {
       final db = await DatabaseHelper.instance.database;
@@ -198,6 +322,7 @@ class AttendanceController extends GetxController {
   }
 
   Future<String> checkOut(String gymId, int attendanceId) async {
+    gymId = _resolveGymId(gymId);
     log('[AttendanceController] checkOut called gymId=$gymId attendanceId=$attendanceId');
     try {
       final db = await DatabaseHelper.instance.database;
@@ -220,6 +345,7 @@ class AttendanceController extends GetxController {
   }
 
   Future<void> getTodaysAttendance(String gymId) async {
+    gymId = _resolveGymId(gymId);
     log('[AttendanceController] getTodaysAttendance called gymId=$gymId');
     selectedDate.value = DateFormat('yyyy-MM-dd').format(DateTime.now());
     await loadCheckedInToday(gymId);

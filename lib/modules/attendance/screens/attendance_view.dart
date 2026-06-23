@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/attendance_controller.dart';
 
 class AttendanceView extends GetView<AttendanceController> {
@@ -91,9 +91,9 @@ class AttendanceView extends GetView<AttendanceController> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: controller.isCheckInMode.value ? AppColors.primary : AppColors.surfaceLight,
+                  color: controller.isCheckInMode.value ? AppColors.primary : AppColors.surfaceElevated,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                  border: Border.all(color: AppColors.borderLight),
+                  border: Border.all(color: AppColors.borderDark),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -101,13 +101,13 @@ class AttendanceView extends GetView<AttendanceController> {
                     Icon(
                       PhosphorIconsRegular.signIn,
                       size: 16,
-                      color: controller.isCheckInMode.value ? Colors.white : AppColors.textPrimaryL,
+                      color: controller.isCheckInMode.value ? Colors.white : AppColors.textPrimaryD,
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
                       'Check In',
                       style: AppTextStyles.label.copyWith(
-                        color: controller.isCheckInMode.value ? Colors.white : AppColors.textPrimaryL,
+                        color: controller.isCheckInMode.value ? Colors.white : AppColors.textPrimaryD,
                       ),
                     ),
                   ],
@@ -126,9 +126,9 @@ class AttendanceView extends GetView<AttendanceController> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: !controller.isCheckInMode.value ? AppColors.primary : AppColors.surfaceLight,
+                  color: !controller.isCheckInMode.value ? AppColors.primary : AppColors.surfaceElevated,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                  border: Border.all(color: AppColors.borderLight),
+                  border: Border.all(color: AppColors.borderDark),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -136,13 +136,13 @@ class AttendanceView extends GetView<AttendanceController> {
                     Icon(
                       PhosphorIconsRegular.clock,
                       size: 16,
-                      color: !controller.isCheckInMode.value ? Colors.white : AppColors.textPrimaryL,
+                      color: !controller.isCheckInMode.value ? Colors.white : AppColors.textPrimaryD,
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
                       'History',
                       style: AppTextStyles.label.copyWith(
-                        color: !controller.isCheckInMode.value ? Colors.white : AppColors.textPrimaryL,
+                        color: !controller.isCheckInMode.value ? Colors.white : AppColors.textPrimaryD,
                       ),
                     ),
                   ],
@@ -257,8 +257,8 @@ class AttendanceView extends GetView<AttendanceController> {
           return Container(
             height: 200,
             decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              border: Border(top: BorderSide(color: AppColors.borderLight)),
+              color: AppColors.surfaceElevated,
+              border: Border(top: BorderSide(color: AppColors.borderDark)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,7 +396,7 @@ class AttendanceView extends GetView<AttendanceController> {
     final checkIn = record['check_in'] as String? ?? '-';
     final checkOut = record['check_out'] as String?;
     final method = record['method'] as String? ?? 'manual';
-    final status = checkOut != null ? 'Present' : 'Present';
+    final status = checkOut != null ? 'Checked Out' : 'Checked In';
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Padding(
@@ -502,7 +502,7 @@ class AttendanceView extends GetView<AttendanceController> {
           const SizedBox(height: AppSpacing.md),
           Text(
             message,
-            style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryL),
+            style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryD),
           ),
         ],
       ),
@@ -526,43 +526,65 @@ class AttendanceView extends GetView<AttendanceController> {
   }
 
   Future<void> _fingerprintCheckIn() async {
-    final members = await controller.getFingerprintMembers('');
-    if (members.isEmpty) {
-      Get.snackbar('No Members', 'No members have registered fingerprints yet');
-      return;
-    }
-    final selected = await Get.dialog<Map<String, dynamic>>(
-      AlertDialog(
-        title: const Text('Fingerprint Check-in'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: members.length,
-            itemBuilder: (_, i) {
-              final member = members[i];
-              final name = member['full_name'] as String? ?? 'Unknown';
-              final phone = member['phone'] as String?;
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: AppColors.primarySurface,
-                  child: Icon(PhosphorIconsRegular.fingerprint, color: AppColors.primary, size: 20),
+    int state = 0;
+    String statusText = '';
+    final result = await Get.dialog<String>(
+      StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Fingerprint Check-in'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  state == 2 ? PhosphorIconsRegular.checkCircle : PhosphorIconsRegular.fingerprint,
+                  size: 64,
+                  color: state == 2 ? Colors.green : AppColors.primary,
                 ),
-                title: Text(name),
-                subtitle: phone != null ? Text(phone) : null,
-                onTap: () => Get.back(result: member),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Get.back(result: null), child: const Text('Cancel')),
-        ],
+                SizedBox(height: 16),
+                Text(
+                  state == 0
+                      ? 'Place your finger on the scanner'
+                      : state == 2
+                          ? statusText
+                          : 'Scanning finger...',
+                  style: AppTextStyles.bodyLg,
+                ),
+                if (state == 1) ...[
+                  SizedBox(height: 16),
+                  CircularProgressIndicator(),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(result: null),
+                child: const Text('Cancel'),
+              ),
+              if (state == 0)
+                ElevatedButton(
+                  onPressed: () async {
+                    setDialogState(() { state = 1; });
+                    final msg = await controller.fingerprintCheckIn('');
+                    statusText = msg;
+                    setDialogState(() { state = 2; });
+                    await Future.delayed(const Duration(seconds: 1));
+                    Get.back(result: msg);
+                  },
+                  child: const Text('Start Scan'),
+                ),
+            ],
+          );
+        },
       ),
     );
-    if (selected != null) {
-      final memberId = selected['member_id'] as String;
-      await _doCheckIn(memberId, method: 'fingerprint');
+    if (result != null) {
+      Get.snackbar(
+        result.startsWith('Check-in recorded') ? 'Success' : 'Notice',
+        result,
+        backgroundColor: result.startsWith('Check-in recorded') ? Colors.green : Colors.orange,
+        colorText: Colors.white,
+      );
     }
   }
 }

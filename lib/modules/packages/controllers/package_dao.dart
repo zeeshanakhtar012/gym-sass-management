@@ -1,6 +1,6 @@
 import 'dart:developer';
 
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 
 class PackageDao {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;

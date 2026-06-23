@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/setting_controller.dart';
 
 class SettingView extends GetView<SettingController> {

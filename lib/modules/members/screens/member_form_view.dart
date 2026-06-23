@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../core/constants/app_constants.dart';
 import '../controllers/member_model.dart';
 import '../controllers/member_form_controller.dart';
 
@@ -32,6 +32,12 @@ class _MemberFormViewState extends State<MemberFormView> {
     if (widget.member != null) {
       controller.loadMember(widget.member!);
     }
+  }
+
+  @override
+  void dispose() {
+    Get.delete<MemberFormController>();
+    super.dispose();
   }
 
   @override
@@ -101,6 +107,8 @@ class _MemberFormViewState extends State<MemberFormView> {
         ],
         const SizedBox(height: AppSpacing.md),
         _buildPackageSection(isWide),
+        const SizedBox(height: AppSpacing.md),
+        _buildPaymentSection(),
         const SizedBox(height: AppSpacing.lg),
         const Divider(),
         const SizedBox(height: AppSpacing.md),
@@ -345,7 +353,9 @@ class _MemberFormViewState extends State<MemberFormView> {
           return DropdownButtonFormField<String>(
             value: controller.selectedPackageId.value.isEmpty
                 ? ''
-                : controller.selectedPackageId.value,
+                : items.any((i) => i.value == controller.selectedPackageId.value)
+                    ? controller.selectedPackageId.value
+                    : '',
             decoration: const InputDecoration(
               labelText: 'Select Package',
               prefixIcon: Icon(PhosphorIconsRegular.tag),
@@ -356,6 +366,97 @@ class _MemberFormViewState extends State<MemberFormView> {
         }),
       ],
     );
+  }
+
+  Widget _buildPaymentSection() {
+    if (controller.isEditing) return const SizedBox.shrink();
+    return Obx(() {
+      return Card(
+
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('Payment', style: AppTextStyles.headingSm),
+                  const Spacer(),
+                  Text('Collect Payment', style: AppTextStyles.bodyMd),
+                  const SizedBox(width: AppSpacing.sm),
+                  Switch(
+                    value: controller.collectPayment.value,
+                    onChanged: (v) => controller.collectPayment.value = v,
+                  ),
+                ],
+              ),
+              if (controller.collectPayment.value) ...[
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Registration Fee',
+                          prefixText: 'Rs. ',
+                        ),
+                        controller: TextEditingController(
+                          text: controller.registrationFee.value.toString(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: TextFormField(
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Monthly Fee',
+                          prefixText: 'Rs. ',
+                        ),
+                        controller: TextEditingController(
+                          text: controller.monthlyFee.value.toString(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Text('Total: Rs. ${controller.registrationFee.value + controller.monthlyFee.value}',
+                      style: AppTextStyles.bodyLg.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: 200,
+                      child: DropdownButtonFormField<String>(
+                        value: controller.paymentMethod.value,
+                        decoration: const InputDecoration(
+                          labelText: 'Method',
+                          prefixIcon: Icon(PhosphorIconsRegular.coin, size: 18),
+                          isDense: true,
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                          DropdownMenuItem(value: 'Bank Transfer', child: Text('Bank Transfer')),
+                          DropdownMenuItem(value: 'EasyPaisa', child: Text('EasyPaisa')),
+                          DropdownMenuItem(value: 'JazzCash', child: Text('JazzCash')),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) controller.paymentMethod.value = v;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    });
   }
 
   Widget _buildQrField() {
@@ -429,7 +530,7 @@ class _MemberFormViewState extends State<MemberFormView> {
                           style: AppTextStyles.bodySm.copyWith(
                             color: controller.isFingerprintRegistered.value
                                 ? AppColors.success
-                                : AppColors.textSecondaryL,
+                                : AppColors.textSecondaryD,
                           ),
                         ),
                       ),
@@ -492,7 +593,11 @@ class _MemberFormViewState extends State<MemberFormView> {
 
   void _save() {
     if (_formKey.currentState!.validate()) {
-      controller.save(widget.gymId);
+      if (controller.isEditing) {
+        controller.save(widget.gymId);
+      } else {
+        controller.saveWithFingerprint(widget.gymId);
+      }
     }
   }
 

@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../core/database/database_helper.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../core/database/database_helper.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/payment_controller.dart';
 
 class PaymentView extends GetView<PaymentController> {
@@ -242,7 +241,7 @@ class PaymentView extends GetView<PaymentController> {
           const SizedBox(height: AppSpacing.md),
           Text(
             'No payments found',
-            style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryL),
+            style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryD),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
@@ -300,7 +299,7 @@ class PaymentView extends GetView<PaymentController> {
       Container(
         height: Get.height * 0.85,
         decoration: const BoxDecoration(
-          color: AppColors.surfaceLight,
+          color: AppColors.surfaceElevated,
           borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusLg)),
         ),
         child: Column(
@@ -308,7 +307,7 @@ class PaymentView extends GetView<PaymentController> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: AppColors.borderLight)),
+                border: Border(bottom: BorderSide(color: AppColors.borderDark)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -517,7 +516,7 @@ class PaymentView extends GetView<PaymentController> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: AppColors.borderLight)),
+                border: Border(top: BorderSide(color: AppColors.borderDark)),
               ),
               child: SizedBox(
                 width: double.infinity,

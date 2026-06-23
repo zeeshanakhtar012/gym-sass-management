@@ -1,17 +1,17 @@
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/member_model.dart';
 import '../controllers/member_list_controller.dart';
-import '../controllers/member_form_controller.dart';
 import 'member_form_view.dart';
 import 'member_detail_view.dart';
 
@@ -208,7 +208,7 @@ class MemberListView extends GetView<MemberListController> {
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: color ?? AppColors.textSecondaryL),
+          Icon(icon, size: 16, color: color ?? AppColors.textSecondaryD),
           const SizedBox(width: AppSpacing.sm),
           Text(text, style: AppTextStyles.bodySm.copyWith(color: color)),
         ],
@@ -232,7 +232,7 @@ class MemberListView extends GetView<MemberListController> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
+                  headingRowColor: WidgetStateProperty.all(AppColors.surfaceElevated),
                   columns: const [
                     DataColumn(label: Text('')),
                     DataColumn(label: Text('Name')),
@@ -401,7 +401,7 @@ class MemberListView extends GetView<MemberListController> {
           Text(
             'No members found',
             style: AppTextStyles.bodyLg.copyWith(
-              color: AppColors.textSecondaryL,
+              color: AppColors.textSecondaryD,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -411,33 +411,39 @@ class MemberListView extends GetView<MemberListController> {
     );
   }
 
-  void _confirmDelete(MemberModel member) {
-    Get.dialog(
+  Future<void> _confirmDelete(MemberModel member) async {
+    final confirmed = await Get.dialog<bool>(
       AlertDialog(
         title: const Text('Delete Member'),
         content: Text(
           'Are you sure you want to delete "${member.fullName}"?\nAll related data will be permanently removed.',
         ),
         actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
           TextButton(
-            onPressed: () {
-              Get.back();
-              controller.deleteMember(member.memberId);
-            },
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
             child: const Text('Delete'),
           ),
         ],
       ),
     );
+    if (confirmed == true) {
+      controller.deleteMember(member.memberId);
+    }
   }
 
   void _openForm([MemberModel? member]) async {
+    log('[MemberListView] _openForm member=${member?.memberId}');
     final result = await Get.to(
       () => MemberFormView(gymId: gymId, member: member),
     );
+    log('[MemberListView] _openForm returned result=$result');
     if (result == true) {
+      log('[MemberListView] _openForm - triggering list refresh');
       controller.loadMembers(gymId);
     }
   }

@@ -1,7 +1,7 @@
 import 'dart:developer';
 import 'dart:typed_data';
 
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 
 class MemberDao {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
@@ -23,14 +23,16 @@ class MemberDao {
   }
 
   Future<void> insert(Map<String, dynamic> data) async {
-    log('[MemberDao] insert called member_id=${data['member_id']}');
+    final fp = data['fingerprint_template'] as Uint8List?;
+    log('[MemberDao] insert called member_id=${data['member_id']} hasTemplate=${fp != null} templateLen=${fp?.length ?? 0}');
     final db = await _dbHelper.database;
     await db.insert('members', data);
     log('[MemberDao] insert completed');
   }
 
   Future<void> update(Map<String, dynamic> data) async {
-    log('[MemberDao] update called member_id=${data['member_id']}');
+    final fp = data['fingerprint_template'] as Uint8List?;
+    log('[MemberDao] update called member_id=${data['member_id']} hasTemplate=${fp != null} templateLen=${fp?.length ?? 0}');
     final db = await _dbHelper.database;
     await db.update('members', data, where: 'member_id = ?', whereArgs: [data['member_id']]);
     log('[MemberDao] update completed');
@@ -72,17 +74,6 @@ class MemberDao {
     );
     log('[MemberDao] getExpiringSoon returned ${results.length} rows');
     return results;
-  }
-
-  Future<Map<String, dynamic>?> getByFingerprint(String gymId, Uint8List template) async {
-    log('[MemberDao] getByFingerprint called gymId=$gymId');
-    final db = await _dbHelper.database;
-    final results = await db.rawQuery(
-      'SELECT * FROM members WHERE gym_id = ? AND fingerprint_template = ?',
-      [gymId, template],
-    );
-    log('[MemberDao] getByFingerprint found=${results.isNotEmpty}');
-    return results.isNotEmpty ? results.first : null;
   }
 
   Future<Map<String, dynamic>?> getByPhone(String gymId, String phone) async {

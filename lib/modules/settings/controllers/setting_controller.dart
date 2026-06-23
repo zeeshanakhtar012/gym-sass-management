@@ -7,7 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 import '../../auth/controllers/auth_service.dart';
 import '../../auth/screens/login_view.dart';
 

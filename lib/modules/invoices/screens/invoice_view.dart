@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/invoice_controller.dart';
 
 class InvoiceView extends GetView<InvoiceController> {
@@ -47,13 +47,13 @@ class InvoiceView extends GetView<InvoiceController> {
             padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: FilterChip(
               label: Text(f, style: AppTextStyles.bodySm.copyWith(
-                color: isSelected ? Colors.white : AppColors.textPrimaryL,
+                color: isSelected ? Colors.white : AppColors.textPrimaryD,
               )),
               selected: isSelected,
               onSelected: (_) => controller.setStatusFilter(f),
               selectedColor: _chipColor(f),
-              backgroundColor: AppColors.surfaceLight,
-              side: BorderSide(color: AppColors.borderLight),
+              backgroundColor: AppColors.surfaceElevated,
+              side: BorderSide(color: AppColors.borderDark),
               padding: const EdgeInsets.symmetric(horizontal: 4),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
@@ -253,7 +253,7 @@ class InvoiceView extends GetView<InvoiceController> {
           SizedBox(height: AppSpacing.md),
           Text(
             'No invoices found',
-            style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryL),
+            style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryD),
           ),
           SizedBox(height: AppSpacing.sm),
           Text(
@@ -297,7 +297,7 @@ class InvoiceView extends GetView<InvoiceController> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('INVOICE', style: AppTextStyles.displayLg),
-                        Text(invoiceNumber, style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondaryL)),
+                        Text(invoiceNumber, style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondaryD)),
                       ],
                     ),
                     _buildStatusBadge(status),
@@ -361,7 +361,7 @@ class InvoiceView extends GetView<InvoiceController> {
         )),
         Text(value, style: (isTotal ? AppTextStyles.headingSm : AppTextStyles.bodyMd).copyWith(
           fontWeight: isTotal ? FontWeight.w700 : FontWeight.w600,
-          color: isTotal ? AppColors.primary : AppColors.textPrimaryL,
+          color: isTotal ? AppColors.primary : AppColors.textPrimaryD,
         )),
       ],
     );

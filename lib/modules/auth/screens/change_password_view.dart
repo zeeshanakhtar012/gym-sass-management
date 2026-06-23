@@ -1,27 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/validators.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/validators.dart';
 import '../controllers/auth_controller.dart';
 import '../../dashboard/screens/dashboard_view.dart';
 import '../../dashboard/bindings/dashboard_binding.dart';
 
-class ChangePasswordView extends GetView<AuthController> {
+class ChangePasswordView extends StatefulWidget {
   const ChangePasswordView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final oldPwdCtrl = TextEditingController();
-    final newPwdCtrl = TextEditingController();
-    final confirmPwdCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    final obscureOld = true.obs;
-    final obscureNew = true.obs;
-    final obscureConfirm = true.obs;
+  State<ChangePasswordView> createState() => _ChangePasswordViewState();
+}
 
+class _ChangePasswordViewState extends State<ChangePasswordView> {
+  final _authController = Get.find<AuthController>();
+  final oldPwdCtrl = TextEditingController();
+  final newPwdCtrl = TextEditingController();
+  final confirmPwdCtrl = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  final obscureOld = true.obs;
+  final obscureNew = true.obs;
+  final obscureConfirm = true.obs;
+
+  @override
+  void dispose() {
+    oldPwdCtrl.dispose();
+    newPwdCtrl.dispose();
+    confirmPwdCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Change Password'),
@@ -124,13 +138,13 @@ class ChangePasswordView extends GetView<AuthController> {
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton(
-                      onPressed: controller.isLoading.value
+                      onPressed: _authController.isLoading.value
                           ? null
                           : () async {
                               if (!formKey.currentState!.validate()) return;
-                              controller.isLoading.value = true;
+                              _authController.isLoading.value = true;
                               try {
-                                final success = await controller
+                                final success = await _authController
                                     .authService
                                     .changePassword(oldPwdCtrl.text, newPwdCtrl.text);
                                 if (success) {
@@ -152,10 +166,10 @@ class ChangePasswordView extends GetView<AuthController> {
                                   colorText: Colors.white,
                                 );
                               } finally {
-                                controller.isLoading.value = false;
+                                _authController.isLoading.value = false;
                               }
                             },
-                      child: controller.isLoading.value
+                      child: _authController.isLoading.value
                           ? const SizedBox(
                               width: 22,
                               height: 22,

@@ -1,17 +1,19 @@
-import 'dart:convert';
 import 'dart:developer';
 import 'dart:typed_data';
 
+import 'package:dartafis/dartafis.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../core/database/database_helper.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
+import '../../../core/database/database_helper.dart';
+import '../../../core/services/dartafis_service.dart';
+import '../../../core/services/zkteco_scanner_service.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../auth/controllers/auth_service.dart';
 import 'member_repository.dart';
 import 'member_model.dart';
@@ -19,6 +21,8 @@ import 'member_model.dart';
 class MemberFormController extends GetxController {
   final MemberRepository _memberRepository = Get.find<MemberRepository>();
   final AuthService _authService = Get.find<AuthService>();
+  final ZKTecoBiometricService _scanner = ZKTecoBiometricService();
+  final DartafisService _dartafis = DartafisService();
 
   MemberModel? editingMember;
 
@@ -42,8 +46,18 @@ class MemberFormController extends GetxController {
   final RxString fitnessGoal = ''.obs;
   final RxBool isLoading = false.obs;
   final RxBool isFingerprintRegistered = false.obs;
-  Uint8List? _fingerprintTemplate;
+  bool _isSaving = false;
+
+  /// Stores the dartafis serialised fingerprint template.
+  /// This is the only fingerprint data persisted for new enrollments.
+  Uint8List? _fingerprintData;
+
   final RxList<Map<String, dynamic>> packages = <Map<String, dynamic>>[].obs;
+
+  final RxInt registrationFee = 0.obs;
+  final RxInt monthlyFee = 0.obs;
+  final RxString paymentMethod = 'Cash'.obs;
+  final RxBool collectPayment = true.obs;
 
   bool get isEditing => editingMember != null;
 
@@ -58,6 +72,15 @@ class MemberFormController extends GetxController {
     log('[MemberFormController] onInit');
     heightController.addListener(_onMeasurementChanged);
     weightController.addListener(_onMeasurementChanged);
+    ever(selectedPackageId, (_) => _updateFeesFromPackage());
+  }
+
+  void _updateFeesFromPackage() {
+    final pkg = packages.firstWhereOrNull(
+      (p) => p['package_id'] == selectedPackageId.value,
+    );
+    registrationFee.value = pkg != null ? (pkg['price'] as int?) ?? 0 : 0;
+    monthlyFee.value = pkg != null ? (pkg['monthly_fee'] as int?) ?? 0 : 0;
   }
 
   @override
@@ -82,20 +105,27 @@ class MemberFormController extends GetxController {
     calculateBmi();
   }
 
+  /// Enroll a fingerprint using the industry-standard biometric workflow:
+  ///   1. Capture raw fingerprint image from scanner.
+  ///   2. Generate a dartafis biometric template (feature extraction).
+  ///   3. Serialize the template for database storage.
+  ///   4. Verify uniqueness: check the new template does not already
+  ///      match an enrolled fingerprint above the deduplication threshold.
+  ///   5. Store only the serialised template (no raw image persisted).
   Future<void> registerFingerprint() async {
     log('[MemberFormController] registerFingerprint called');
     final confirm = await Get.dialog<bool>(
       AlertDialog(
         title: const Text('Register Fingerprint'),
         content: const Text(
-          'Place your finger on the fingerprint scanner to begin enrollment.\n\n'
-          'The scanner will scan your finger 3 times to create a complete template.',
+          'Place your finger on the fingerprint scanner.\n\n'
+          'The system will capture and enroll your fingerprint.',
         ),
         actions: [
           TextButton(onPressed: () => Get.back(result: false), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Get.back(result: true),
-            child: const Text('Start Enrollment'),
+            child: const Text('Start Scan'),
           ),
         ],
       ),
@@ -105,90 +135,180 @@ class MemberFormController extends GetxController {
       return;
     }
     try {
-      for (int scan = 1; scan <= 3; scan++) {
-        final completed = await _showFingerprintScanDialog(scan, 3);
-        if (!completed) {
-          log('[MemberFormController] registerFingerprint - scan $scan cancelled');
-          return;
-        }
+      _showEnrollDialog();
+
+      Map<String, dynamic>? result;
+      try {
+        result = await _scanner.enrollFingerprint();
+      } finally {
+        Get.back();
       }
-      _fingerprintTemplate = Uint8List.fromList(utf8.encode(const Uuid().v4()));
+
+      if (result == null) {
+        log('[MemberFormController] registerFingerprint - scan failed');
+        Get.snackbar('Error',
+          'Fingerprint enrollment failed. Ensure the scanner is connected.',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5),
+        );
+        return;
+      }
+
+      final rawImage = result['rawImage'] as List<int>?;
+      if (rawImage == null || rawImage.length != AppConstants.fingerprintImageSize) {
+        log('[MemberFormController] registerFingerprint - invalid raw image');
+        Get.snackbar('Error', 'Invalid fingerprint capture. Try again.',
+          backgroundColor: Colors.red, colorText: Colors.white);
+        return;
+      }
+
+      log('[MemberFormController] registerFingerprint - extracting dartafis template');
+      final imageBytes = Uint8List.fromList(rawImage);
+
+      final serialisedTemplate = await _dartafis.extractAndSerialize(imageBytes);
+      log('[MemberFormController] registerFingerprint - template extracted, '
+          'size=${serialisedTemplate.length} bytes');
+
+      if (!_dartafis.isValidTemplate(serialisedTemplate)) {
+        log('[MemberFormController] registerFingerprint - invalid template generated');
+        Get.snackbar('Error', 'Failed to generate a valid fingerprint template. Try again.',
+          backgroundColor: Colors.red, colorText: Colors.white);
+        return;
+      }
+
+      // --- Uniqueness check: verify this fingerprint is not already enrolled. ---
+      final isDuplicate = await _isDuplicateTemplate(serialisedTemplate);
+      if (isDuplicate) {
+        log('[MemberFormController] registerFingerprint - DUPLICATE fingerprint detected');
+        Get.snackbar('Duplicate Fingerprint',
+          'This fingerprint is already registered to another member.',
+          backgroundColor: Colors.red, colorText: Colors.white,
+          duration: const Duration(seconds: 6));
+        return;
+      }
+
+      _fingerprintData = serialisedTemplate;
       isFingerprintRegistered.value = true;
-      log('[MemberFormController] registerFingerprint - success');
-      Get.snackbar('Success', 'Fingerprint registered successfully',
+      log('[MemberFormController] registerFingerprint - success, '
+          'templateLen=${serialisedTemplate.length}');
+      Get.snackbar(
+        'Fingerprint Registered',
+        'Template: ${serialisedTemplate.length} bytes',
         backgroundColor: Colors.green,
         colorText: Colors.white,
+        duration: const Duration(seconds: 4),
       );
     } catch (e, stack) {
       log('[MemberFormController] registerFingerprint - error: $e');
       log('[MemberFormController] stack: $stack');
-      Get.back();
       Get.snackbar('Error', 'Failed to register fingerprint: $e');
     }
   }
 
-  Future<bool> _showFingerprintScanDialog(int currentScan, int totalScans) async {
-    int _state = 0; // 0=initial, 1=scanning, 2=done
-    return await Get.dialog<bool>(
-      StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: Text('Scan $currentScan of $totalScans'),
-            content: _state == 0
-                ? const Text(
-                    'Place your finger firmly on the scanner.\n\n'
-                    'Hold steady until the scan completes.',
-                  )
-                : _state == 1
-                    ? const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(PhosphorIconsRegular.fingerprint, size: 64, color: AppColors.primary),
-                          SizedBox(height: 16),
-                          Text('Scanning finger...', style: AppTextStyles.bodyLg),
-                          SizedBox(height: 16),
-                          CircularProgressIndicator(),
-                        ],
-                      )
-                    : const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(PhosphorIconsRegular.checkCircle, size: 64, color: AppColors.success),
-                          SizedBox(height: 16),
-                          Text('Scan captured!', style: AppTextStyles.bodyLg),
-                        ],
-                      ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                child: const Text('Cancel'),
-              ),
-              if (_state == 0)
-                ElevatedButton(
-                  onPressed: () async {
-                    setDialogState(() { _state = 1; });
-                    await Future.delayed(const Duration(milliseconds: 1500));
-                    setDialogState(() { _state = 2; });
-                  },
-                  child: const Text('Scan'),
-                ),
-              if (_state == 2)
-                ElevatedButton(
-                  onPressed: () => Get.back(result: true),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-                  child: const Text('Continue', style: TextStyle(color: Colors.white)),
-                ),
-            ],
-          );
-        },
+  /// Check whether [probe] already matches any stored dartafis template
+  /// above the deduplication threshold.
+  Future<bool> _isDuplicateTemplate(Uint8List probe) async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final rows = await db.query('members',
+        columns: ['fingerprint_data'],
+        where: 'fingerprint_data IS NOT NULL',
+      );
+      if (rows.isEmpty) return false;
+
+      final existingTemplates = rows
+          .map((r) => r['fingerprint_data'] as Uint8List?)
+          .whereType<Uint8List>()
+          .toList();
+
+      if (existingTemplates.isEmpty) return false;
+
+      log('[MemberFormController] _isDuplicateTemplate: checking against '
+          '${existingTemplates.length} existing templates');
+      for (final t in existingTemplates) {
+        try {
+          final candidate = _dartafis.deserializeTemplate(t);
+          final probeTpl = _dartafis.deserializeTemplate(probe);
+          final matcher = SearchMatcher(probeTpl);
+          final score = await matcher.match(candidate);
+          if (score >= AppConstants.fingerprintEnrollDedupeThreshold) {
+            log('[MemberFormController] _isDuplicateTemplate: DUPLICATE '
+                'score=${score.toStringAsFixed(1)}');
+            return true;
+          }
+        } catch (_) {
+          continue;
+        }
+      }
+      return false;
+    } catch (e) {
+      log('[MemberFormController] _isDuplicateTemplate error: $e');
+      return false;
+    }
+  }
+
+  void _showEnrollDialog() {
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Registering Fingerprint'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(PhosphorIconsRegular.fingerprint, size: 64, color: AppColors.primary),
+            const SizedBox(height: 16),
+            const Text('Place your finger on the scanner and hold steady.'),
+            const SizedBox(height: 8),
+            Text('Biometric template extraction in progress...',
+              style: AppTextStyles.bodySm),
+            const SizedBox(height: 16),
+            const CircularProgressIndicator(),
+          ],
+        ),
       ),
       barrierDismissible: false,
-    ) ?? false;
+    );
+  }
+
+  /// Reset ALL form fields and state to initial values.
+  /// Called after a successful member creation so no previous data lingers.
+  void resetForm() {
+    log('[MemberFormController] resetForm');
+    fullNameController.clear();
+    fatherNameController.clear();
+    cnicController.clear();
+    phoneController.clear();
+    joiningDateController.clear();
+    addressController.clear();
+    heightController.clear();
+    weightController.clear();
+    qrDataController.clear();
+    startDateController.clear();
+    expiryDateController.clear();
+
+    selectedGender.value = 'Male';
+    selectedPhotoPath.value = '';
+    bmi.value = 0.0;
+    selectedPackageId.value = '';
+    selectedStatus.value = 'active';
+    fitnessGoal.value = '';
+    isLoading.value = false;
+
+    _fingerprintData = null;
+    isFingerprintRegistered.value = false;
+
+    registrationFee.value = 0;
+    monthlyFee.value = 0;
+    paymentMethod.value = 'Cash';
+    collectPayment.value = true;
+
+    editingMember = null;
+    log('[MemberFormController] resetForm completed');
   }
 
   Future<void> clearFingerprint() async {
     log('[MemberFormController] clearFingerprint called');
-    _fingerprintTemplate = null;
+    _fingerprintData = null;
     isFingerprintRegistered.value = false;
     log('[MemberFormController] clearFingerprint completed');
   }
@@ -199,6 +319,10 @@ class MemberFormController extends GetxController {
     final db = await DatabaseHelper.instance.database;
     final result = await db.query('packages', where: 'gym_id = ?', whereArgs: [gymId]);
     packages.value = result;
+    if (result.isNotEmpty && selectedPackageId.value.isEmpty) {
+      selectedPackageId.value = result.first['package_id'] as String;
+    }
+    _updateFeesFromPackage();
     log('[MemberFormController] loadPackages loaded ${result.length} packages');
   }
 
@@ -222,8 +346,9 @@ class MemberFormController extends GetxController {
     startDateController.text = member.startDate ?? '';
     expiryDateController.text = member.expiryDate ?? '';
     selectedStatus.value = member.status;
-    _fingerprintTemplate = member.fingerprintTemplate;
-    isFingerprintRegistered.value = member.fingerprintTemplate != null;
+    _fingerprintData = member.fingerprintData;
+    isFingerprintRegistered.value = member.fingerprintData != null;
+    _updateFeesFromPackage();
     log('[MemberFormController] loadMember completed');
   }
 
@@ -307,16 +432,16 @@ class MemberFormController extends GetxController {
     gymId = _resolveGymId(gymId);
     log('[MemberFormController] save called gymId=$gymId isEditing=$isEditing');
     if (fullNameController.text.trim().isEmpty) {
-      log('[MemberFormController] save - name empty');
       Get.snackbar('Error', 'Full name is required');
       return;
     }
     if (phoneController.text.trim().isEmpty) {
-      log('[MemberFormController] save - phone empty');
       Get.snackbar('Error', 'Phone number is required');
       return;
     }
 
+    if (_isSaving) return;
+    _isSaving = true;
     isLoading.value = true;
     try {
       final now = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
@@ -356,7 +481,7 @@ class MemberFormController extends GetxController {
           weight: double.tryParse(weightController.text),
           bmi: bmi.value > 0 ? bmi.value : null,
           fitnessGoal: fitnessGoal.value.trim().isEmpty ? null : fitnessGoal.value.trim(),
-          fingerprintTemplate: _fingerprintTemplate,
+          fingerprintData: _fingerprintData,
           qrData: qrDataController.text.trim().isEmpty ? null : qrDataController.text.trim(),
           packageId: selectedPackageId.value.isEmpty ? null : selectedPackageId.value,
           startDate: startDate,
@@ -365,7 +490,14 @@ class MemberFormController extends GetxController {
           updatedAt: now,
         );
         await _memberRepository.updateMember(updated);
-        log('[MemberFormController] save - member updated successfully');
+        log('[MemberFormController] save - member updated successfully '
+            'memberId=${updated.memberId} name="${updated.fullName}"');
+        Get.snackbar('Success', 'Member "${updated.fullName}" updated successfully',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+        log('[MemberFormController] save - navigating back after update');
         Get.back(result: true);
       } else {
         final member = MemberModel(
@@ -383,7 +515,7 @@ class MemberFormController extends GetxController {
           weight: double.tryParse(weightController.text),
           bmi: bmi.value > 0 ? bmi.value : null,
           fitnessGoal: fitnessGoal.value.trim().isEmpty ? null : fitnessGoal.value.trim(),
-          fingerprintTemplate: _fingerprintTemplate,
+          fingerprintData: _fingerprintData,
           qrData: qrDataController.text.trim().isEmpty ? null : qrDataController.text.trim(),
           packageId: selectedPackageId.value.isEmpty ? null : selectedPackageId.value,
           startDate: startDate,
@@ -394,175 +526,202 @@ class MemberFormController extends GetxController {
           updatedAt: now,
         );
         final created = await _memberRepository.createMember(member);
-        log('[MemberFormController] save - member created successfully');
-        isLoading.value = false;
-        final feePaid = await _collectRegistrationFee(created, gymId);
-        if (feePaid) {
-          Get.back(result: true);
-        }
-        return;
+        log('[MemberFormController] save - member created successfully '
+            'memberId=${created.memberId} name="${created.fullName}"');
+        Get.snackbar('Success', 'Member "${created.fullName}" added successfully',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+        await _recordPayment(created, gymId);
+        resetForm();
+        log('[MemberFormController] save - navigating back after creation');
+        Get.back(result: true);
       }
     } catch (e, stack) {
       log('[MemberFormController] save failed: $e');
       log('[MemberFormController] stack: $stack');
       Get.snackbar('Error', e.toString());
     } finally {
+      _isSaving = false;
       isLoading.value = false;
     }
   }
 
-  Future<bool> _collectRegistrationFee(MemberModel member, String gymId) async {
-    log('[MemberFormController] _collectRegistrationFee called');
-    final pkg = packages.firstWhereOrNull(
-      (p) => p['package_id'] == member.packageId,
-    );
-    final regFee = pkg != null ? (pkg['price'] as int?) ?? 0 : 0;
-    final monthlyFee = pkg != null ? (pkg['monthly_fee'] as int?) ?? 0 : 0;
-    final memberName = member.fullName;
+  Future<void> saveWithFingerprint(String gymId) async {
+    gymId = _resolveGymId(gymId);
+    log('[MemberFormController] saveWithFingerprint called gymId=$gymId');
 
-    String paymentMethod = 'Cash';
-    final result = await Get.dialog<bool>(
-      StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Registration Fee'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Member: $memberName', style: AppTextStyles.bodyMd),
-                  SizedBox(height: AppSpacing.md),
-                  if (regFee > 0) ...[
-                    _feeRow('Registration Fee', regFee),
-                    SizedBox(height: AppSpacing.sm),
-                  ],
-                  if (monthlyFee > 0) ...[
-                    _feeRow('Monthly Fee', monthlyFee),
-                    SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Next fee due: ${DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 30)))}',
-                      style: AppTextStyles.bodySm.copyWith(color: AppColors.textSecondaryL),
-                    ),
-                    SizedBox(height: AppSpacing.md),
-                  ],
-                  Divider(),
-                  _feeRow('Total Due', regFee + monthlyFee, bold: true),
-                  SizedBox(height: AppSpacing.lg),
-                  DropdownButtonFormField<String>(
-                    value: paymentMethod,
-                    decoration: const InputDecoration(
-                      labelText: 'Payment Method',
-                      prefixIcon: Icon(PhosphorIconsRegular.coin),
-                    ),
-                    items: ['Cash', 'Bank Transfer', 'EasyPaisa', 'JazzCash']
-                        .map((m) => DropdownMenuItem(value: m, child: Text(m)))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setDialogState(() => paymentMethod = v);
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                child: const Text('Skip'),
-              ),
-              ElevatedButton(
-                onPressed: () => Get.back(result: true),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                child: const Text('Collect Payment', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          );
-        },
+    // If fingerprint already registered, save directly
+    if (_fingerprintData != null) {
+      log('[MemberFormController] saveWithFingerprint - fingerprint already captured, saving');
+      await save(gymId);
+      return;
+    }
+
+    final connected = await _scanner.isScannerConnected();
+    if (!connected) {
+      log('[MemberFormController] saveWithFingerprint - no scanner, saving without fingerprint');
+      await save(gymId);
+      return;
+    }
+
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: const Text('Register Fingerprint'),
+        content: const Text('Place your finger on the scanner to register your fingerprint.'),
+        actions: [
+          TextButton(onPressed: () => Get.back(result: false), child: const Text('Skip')),
+          ElevatedButton(onPressed: () => Get.back(result: true), child: const Text('Scan')),
+        ],
       ),
     );
 
-    if (result == true) {
-      try {
-        final now = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
-        final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-        final paymentId = const Uuid().v4();
-        final db = await DatabaseHelper.instance.database;
-        final totalAmount = regFee + monthlyFee;
-
-        await db.insert('payments', {
-          'payment_id': paymentId,
-          'gym_id': gymId,
-          'member_id': member.memberId,
-          'package_id': member.packageId,
-          'amount': totalAmount,
-          'discount': 0,
-          'tax': 0,
-          'total': totalAmount,
-          'method': paymentMethod,
-          'remarks': 'Registration fee + first month fee',
-          'received_by': _authService.currentSession.value?.username ?? '',
-          'payment_date': dateStr,
-          'created_at': now,
-        });
-
-        final invoiceId = const Uuid().v4();
-        final gymCode = gymId.length > 4
-            ? gymId.substring(0, 4).toUpperCase()
-            : 'GYM';
-        final invoiceCount = await db.query('invoices', where: 'gym_id = ?', whereArgs: [gymId]);
-        final invoiceNumber = 'INV-$gymCode-${(invoiceCount.length + 1).toString().padLeft(4, '0')}';
-        final pkgName = pkg != null ? (pkg['name'] as String? ?? '') : '';
-
-        await db.insert('invoices', {
-          'invoice_id': invoiceId,
-          'gym_id': gymId,
-          'member_id': member.memberId,
-          'payment_id': paymentId,
-          'invoice_number': invoiceNumber,
-          'package_name': pkgName,
-          'amount': totalAmount,
-          'discount': 0,
-          'tax': 0,
-          'total': totalAmount,
-          'status': 'paid',
-          'invoice_date': dateStr,
-        });
-
-        final feeDueDate = DateFormat('yyyy-MM-dd').format(
-          DateTime.now().add(const Duration(days: 30)),
-        );
-        final updated = member.copyWith(
-          feeStatus: 'paid',
-          lastFeePaidDate: dateStr,
-          feeDueDate: feeDueDate,
-        );
-        await _memberRepository.updateMember(updated);
-
-        log('[MemberFormController] _collectRegistrationFee - payment recorded invoice=$invoiceNumber');
-        Get.snackbar('Success', 'Payment collected successfully',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-        return true;
-      } catch (e, stack) {
-        log('[MemberFormController] _collectRegistrationFee - error: $e');
-        log('[MemberFormController] stack: $stack');
-        Get.snackbar('Error', 'Failed to record payment: $e');
-        return false;
-      }
+    if (confirmed != true) {
+      log('[MemberFormController] saveWithFingerprint - user skipped fingerprint');
+      await save(gymId);
+      return;
     }
-    return false;
+
+    _showEnrollDialog();
+
+    Map<String, dynamic>? result;
+    try {
+      result = await _scanner.enrollFingerprint();
+    } finally {
+      Get.back();
+    }
+
+    if (result != null) {
+      final rawImage = result['rawImage'] as List<int>?;
+      if (rawImage != null && rawImage.length == AppConstants.fingerprintImageSize) {
+        final imageBytes = Uint8List.fromList(rawImage);
+        final serialised = await _dartafis.extractAndSerialize(imageBytes);
+        if (_dartafis.isValidTemplate(serialised)) {
+          final isDup = await _isDuplicateTemplate(serialised);
+          if (isDup) {
+            log('[MemberFormController] saveWithFingerprint - DUPLICATE fingerprint');
+            Get.snackbar('Duplicate Fingerprint',
+              'This fingerprint is already registered to another member.',
+              backgroundColor: Colors.red, colorText: Colors.white,
+              duration: const Duration(seconds: 5));
+            await save(gymId);
+            return;
+          }
+          _fingerprintData = serialised;
+          isFingerprintRegistered.value = true;
+          log('[MemberFormController] saveWithFingerprint - '
+              'template extracted, len=${serialised.length}');
+          Get.snackbar('Fingerprint Captured',
+            '${serialised.length} bytes',
+            backgroundColor: Colors.green, colorText: Colors.white,
+            duration: const Duration(seconds: 5),
+          );
+        } else {
+          log('[MemberFormController] saveWithFingerprint - invalid template');
+          Get.snackbar('Warning', 'Fingerprint template invalid, saving without fingerprint',
+            backgroundColor: Colors.orange, colorText: Colors.white);
+        }
+      } else {
+        log('[MemberFormController] saveWithFingerprint - invalid raw image');
+        Get.snackbar('Warning', 'Fingerprint data invalid, saving without fingerprint',
+          backgroundColor: Colors.orange, colorText: Colors.white);
+      }
+    } else {
+      log('[MemberFormController] saveWithFingerprint - scan failed, saving without');
+      Get.snackbar('Info', 'Fingerprint scan failed, saving member without fingerprint',
+        backgroundColor: Colors.orange, colorText: Colors.white,
+      );
+    }
+
+    await save(gymId);
   }
 
-  Widget _feeRow(String label, int amount, {bool bold = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: bold ? AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600) : AppTextStyles.bodyMd),
-        Text('Rs. $amount', style: bold ? AppTextStyles.bodyMd.copyWith(fontWeight: FontWeight.w600, color: AppColors.primary) : AppTextStyles.bodyMd),
-      ],
-    );
+  Future<void> _recordPayment(MemberModel member, String gymId) async {
+    if (!collectPayment.value) {
+      log('[MemberFormController] _recordPayment - skipped (collectPayment off)');
+      return;
+    }
+    if (selectedPackageId.value.isEmpty) {
+      log('[MemberFormController] _recordPayment - no package selected, skipping');
+      return;
+    }
+    gymId = _resolveGymId(gymId);
+    log('[MemberFormController] _recordPayment memberId=${member.memberId}');
+
+    final total = registrationFee.value + monthlyFee.value;
+    if (total <= 0) {
+      log('[MemberFormController] _recordPayment - total is 0, skipping');
+      return;
+    }
+
+    try {
+      final now = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+      final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final paymentId = const Uuid().v4();
+      final db = await DatabaseHelper.instance.database;
+
+      await db.insert('payments', {
+        'payment_id': paymentId,
+        'gym_id': gymId,
+        'member_id': member.memberId,
+        'package_id': member.packageId,
+        'amount': total,
+        'discount': 0,
+        'tax': 0,
+        'total': total,
+        'method': paymentMethod.value,
+        'remarks': 'Registration fee + first month fee',
+        'received_by': _authService.currentSession.value?.username ?? '',
+        'payment_date': dateStr,
+        'created_at': now,
+      });
+
+      final invoiceId = const Uuid().v4();
+      final gymCode = gymId.length > 4
+          ? gymId.substring(0, 4).toUpperCase()
+          : 'GYM';
+      final invoiceCount = await db.query('invoices', where: 'gym_id = ?', whereArgs: [gymId]);
+      final invoiceNumber = 'INV-$gymCode-${(invoiceCount.length + 1).toString().padLeft(4, '0')}';
+      final pkg = packages.firstWhereOrNull(
+        (p) => p['package_id'] == member.packageId,
+      );
+      final pkgName = pkg != null ? (pkg['name'] as String? ?? '') : '';
+
+      await db.insert('invoices', {
+        'invoice_id': invoiceId,
+        'gym_id': gymId,
+        'member_id': member.memberId,
+        'payment_id': paymentId,
+        'invoice_number': invoiceNumber,
+        'package_name': pkgName,
+        'amount': total,
+        'discount': 0,
+        'tax': 0,
+        'total': total,
+        'status': 'paid',
+        'invoice_date': dateStr,
+      });
+
+      final feeDueDate = DateFormat('yyyy-MM-dd').format(
+        DateTime.now().add(const Duration(days: 30)),
+      );
+      final updated = member.copyWith(
+        feeStatus: 'paid',
+        lastFeePaidDate: dateStr,
+        feeDueDate: feeDueDate,
+      );
+      await _memberRepository.updateMember(updated);
+
+      log('[MemberFormController] _recordPayment - payment recorded invoice=$invoiceNumber');
+      Get.snackbar('Success', 'Payment collected successfully',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e, stack) {
+      log('[MemberFormController] _recordPayment - error: $e');
+      log('[MemberFormController] stack: $stack');
+      Get.snackbar('Error', 'Failed to record payment: $e');
+    }
   }
 }

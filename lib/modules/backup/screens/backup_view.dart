@@ -5,11 +5,11 @@ import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/backup_controller.dart';
 
 class BackupView extends GetView<BackupController> {
@@ -67,7 +67,7 @@ class BackupView extends GetView<BackupController> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondaryL)),
+        Text(label, style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondaryD)),
         Text(value, style: AppTextStyles.bodyMd),
       ],
     );
@@ -152,7 +152,7 @@ class BackupView extends GetView<BackupController> {
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   'No backup files yet',
-                  style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryL),
+                  style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryD),
                 ),
               ],
             ),

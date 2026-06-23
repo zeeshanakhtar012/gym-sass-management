@@ -1,8 +1,9 @@
-import 'dart:async';
 import 'dart:developer';
 
 import 'package:get/get.dart';
 import '../../auth/controllers/auth_service.dart' as auth;
+import '../../../core/services/zkteco_scanner_service.dart';
+import '../../../core/services/fingerprint_scanner_service.dart';
 import 'dashboard_repository.dart';
 import 'dashboard_stats.dart';
 
@@ -15,8 +16,9 @@ class DashboardController extends GetxController {
   final RxList attendanceData = [].obs;
   final RxList growthData = [].obs;
   final RxBool isLoading = true.obs;
+  final RxBool fingerprintConnected = false.obs;
 
-  Timer? _refreshTimer;
+  final FingerprintScannerService _scanner = ZKTecoBiometricService();
 
   @override
   void onInit() {
@@ -24,6 +26,7 @@ class DashboardController extends GetxController {
     log('[DashboardController] onInit - isSuperAdmin: ${_authService.isSuperAdmin}, gymId: ${_authService.currentGymId}');
     final gymId = _resolveGymId();
     loadDashboard(gymId);
+    checkFingerprintConnection();
   }
 
   String _resolveGymId() {
@@ -38,8 +41,20 @@ class DashboardController extends GetxController {
 
   @override
   void onClose() {
-    _refreshTimer?.cancel();
+    _scanner.disconnect();
     super.onClose();
+  }
+
+  Future<void> checkFingerprintConnection() async {
+    log('[DashboardController] checkFingerprintConnection called');
+    try {
+      final connected = await _scanner.isScannerConnected();
+      fingerprintConnected.value = connected;
+      log('[DashboardController] fingerprint scanner connected: $connected');
+    } catch (e) {
+      log('[DashboardController] fingerprint check error: $e');
+      fingerprintConnected.value = false;
+    }
   }
 
   Future<void> loadDashboard(String gymId) async {
@@ -69,10 +84,4 @@ class DashboardController extends GetxController {
     }
   }
 
-  void startAutoRefresh(String gymId) {
-    _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
-      loadDashboard(gymId);
-    });
-  }
 }

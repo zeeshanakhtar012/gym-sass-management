@@ -2,8 +2,6 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqflite/sqflite.dart';
-
 import '../database/database_helper.dart';
 
 class BackupService {
@@ -12,14 +10,15 @@ class BackupService {
 
   Future<String> exportBackup(String gymId) async {
     final db = await DatabaseHelper.instance.database;
+    final dbPath = db.path;
+
     final tempDir = await getTemporaryDirectory();
     final backupDir = Directory(p.join(tempDir.path, 'gym_backup_$gymId'));
     if (backupDir.existsSync()) backupDir.deleteSync(recursive: true);
     backupDir.createSync(recursive: true);
 
-    await db.execute("ATTACH DATABASE '${p.join(backupDir.path, 'gym_erp.db')}' AS backup");
-    await db.execute("SELECT sql FROM sqlite_master WHERE type='table'");
-    await db.execute("DETACH DATABASE backup");
+    final backupDbPath = p.join(backupDir.path, 'gym_erp.db');
+    await db.execute("VACUUM INTO '$backupDbPath'");
 
     final archive = Archive();
     _addDirectoryToArchive(archive, backupDir, '');
@@ -50,6 +49,16 @@ class BackupService {
       }
     }
 
+    final backupDbPath = p.join(restoreDir.path, 'gym_erp.db');
+    if (!File(backupDbPath).existsSync()) return false;
+
+    await DatabaseHelper.instance.close();
+    final docsDir = await getApplicationDocumentsDirectory();
+    final targetPath = p.join(docsDir.path, 'gym_erp.db');
+    await File(backupDbPath).copy(targetPath);
+    await DatabaseHelper.instance.reopen();
+
+    restoreDir.deleteSync(recursive: true);
     return true;
   }
 

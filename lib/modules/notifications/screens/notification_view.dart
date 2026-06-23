@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/notification_controller.dart';
 
 class NotificationView extends GetView<NotificationController> {
@@ -60,7 +60,7 @@ class NotificationView extends GetView<NotificationController> {
               padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.sm),
               child: Text(
                 section['header'] as String,
-                style: AppTextStyles.label.copyWith(color: AppColors.textSecondaryL),
+                style: AppTextStyles.label.copyWith(color: AppColors.textSecondaryD),
               ),
             ),
             ...items.map((item) => _buildNotificationItem(item)),
@@ -199,7 +199,7 @@ class NotificationView extends GetView<NotificationController> {
           const SizedBox(height: AppSpacing.md),
           Text(
             'No notifications',
-            style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryL),
+            style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryD),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(

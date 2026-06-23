@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/formatters.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/formatters.dart';
 import '../controllers/member_model.dart';
 import '../controllers/member_stats.dart';
 import '../controllers/member_repository.dart';
@@ -396,10 +396,10 @@ class _MemberDetailViewState extends State<MemberDetailView> {
             _detailRow(
               PhosphorIconsRegular.fingerprint,
               'Fingerprint',
-              member.fingerprintTemplate != null ? 'Registered' : 'Not Registered',
-              valueColor: member.fingerprintTemplate != null
+              member.fingerprintImage != null ? 'Registered' : 'Not Registered',
+              valueColor: member.fingerprintImage != null
                   ? AppColors.success
-                  : AppColors.textSecondaryL,
+                  : AppColors.textSecondaryD,
             ),
           ],
         ),
@@ -430,7 +430,7 @@ class _MemberDetailViewState extends State<MemberDetailView> {
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color: AppColors.bgLight,
+                color: AppColors.surfaceElevated,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
               ),
               child: SelectableText(
@@ -523,7 +523,7 @@ class _MemberDetailViewState extends State<MemberDetailView> {
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.textSecondaryL),
+          Icon(icon, size: 16, color: AppColors.textSecondaryD),
           const SizedBox(width: AppSpacing.sm),
           SizedBox(
             width: 100,

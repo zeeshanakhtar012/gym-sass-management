@@ -1,7 +1,7 @@
 import 'dart:developer';
 
 import 'package:get/get.dart';
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 
 class GymDao {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;

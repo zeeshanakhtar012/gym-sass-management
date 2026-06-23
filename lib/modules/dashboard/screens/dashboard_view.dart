@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../widgets/app_drawer.dart';
 import '../../members/screens/member_list_view.dart';
 import '../../members/bindings/member_binding.dart';
 import '../../attendance/screens/attendance_view.dart';
+import '../../attendance/screens/fingerprint_attendance_view.dart';
 import '../../attendance/bindings/attendance_binding.dart';
 import '../../invoices/screens/invoice_view.dart';
 import '../../invoices/bindings/invoice_binding.dart';
@@ -88,7 +89,16 @@ class DashboardView extends GetView<DashboardController> {
   }
 
   List<_StatItem> _buildStatItems(DashboardStats stats) {
+    final fpConnected = controller.fingerprintConnected.value;
     return [
+      _StatItem(
+        PhosphorIconsRegular.fingerprint,
+        'Fingerprint',
+        fpConnected ? 'Connected' : 'Disconnected',
+        // fpConnected ? '${stats.fingerprintMembers} Connnected' : 'Disconnected',
+        fpConnected ? AppColors.success : AppColors.danger,
+        onTap: () => Get.to(() => FingerprintAttendanceView()),
+      ),
       _StatItem(PhosphorIconsRegular.users, 'Total Members', '${stats.totalMembers}', AppColors.primary, onTap: () {
         MemberBinding().dependencies();
         Get.to(() => MemberListView());

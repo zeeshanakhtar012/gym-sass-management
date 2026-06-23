@@ -35,7 +35,7 @@ class GymErpApp extends StatelessWidget {
       defaultTransition: Transition.fadeIn,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.light,
+      themeMode: ThemeMode.dark,
       home: isLoggedIn ? const DashboardView() : const LoginView(),
       builder: (context, child) {
         return ResponsiveBreakpoints.builder(

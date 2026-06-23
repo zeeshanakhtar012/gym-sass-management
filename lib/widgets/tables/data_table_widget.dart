@@ -27,7 +27,7 @@ class AppDataTable extends StatelessWidget {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
+            headingRowColor: WidgetStateProperty.all(AppColors.surfaceElevated),
             columns: columns,
             rows: rows,
             columnSpacing: AppSpacing.md,

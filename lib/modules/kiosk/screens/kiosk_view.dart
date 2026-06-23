@@ -5,10 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../members/controllers/member_model.dart';
 import '../controllers/kiosk_controller.dart';
 
@@ -91,7 +91,7 @@ class KioskView extends GetView<KioskController> {
             ),
           ),
           Obx(() {
-            final alive = controller.isScanning.value;
+            final alive = controller.isDeviceConnected.value;
             return Container(
               width: 10,
               height: 10,
@@ -119,19 +119,39 @@ class KioskView extends GetView<KioskController> {
         border: Border.all(color: const Color(0xFF00FF41).withValues(alpha: 0.3)),
       ),
       child: Obx(() {
-        final hasFingerprints = controller.fingerprintMembers.isNotEmpty;
+        final connected = controller.isDeviceConnected.value;
+        final hasFpMembers = controller.fingerprintMembers.isNotEmpty;
+        final scanning = controller.isScanning.value;
+        final status = controller.scanStatus.value;
+
+        String deviceLabel;
+        Color deviceColor;
+        if (!connected) {
+          deviceLabel = 'NO FINGERPRINT DEVICE';
+          deviceColor = const Color(0xFF8C9BA3);
+        } else if (!hasFpMembers) {
+          deviceLabel = 'NO REGISTERED TEMPLATES';
+          deviceColor = const Color(0xFF8C9BA3);
+        } else if (scanning) {
+          deviceLabel = 'SCANNING FINGERPRINT...';
+          deviceColor = const Color(0xFF00FF41);
+        } else {
+          deviceLabel = 'FINGERPRINT DEVICE READY';
+          deviceColor = const Color(0xFF00FF41);
+        }
+
         return Row(
           children: [
-            _scanningAnimation(),
+            _scannerIcon(connected, scanning),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    hasFingerprints ? 'SCANNING FINGERPRINT...' : 'NO FINGERPRINT DEVICE',
+                    deviceLabel,
                     style: TextStyle(
-                      color: hasFingerprints ? const Color(0xFF00FF41) : const Color(0xFF8C9BA3),
+                      color: deviceColor,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'monospace',
@@ -139,11 +159,11 @@ class KioskView extends GetView<KioskController> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  if (hasFingerprints)
+                  if (connected && hasFpMembers)
                     Text(
-                      controller.detectedName.value.isNotEmpty
-                          ? '> DETECTED: ${controller.detectedName.value}'
-                          : '> waiting for scan...',
+                      status.isNotEmpty
+                          ? '> $status'
+                          : '> waiting for finger...',
                       style: const TextStyle(
                         color: Color(0xFF8C9BA3),
                         fontSize: 13,
@@ -153,76 +173,29 @@ class KioskView extends GetView<KioskController> {
                 ],
               ),
             ),
-            if (hasFingerprints)
-              GestureDetector(
-                onTap: () => controller.autoDetectAndCheckIn(),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00FF41).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                    border: Border.all(color: const Color(0xFF00FF41).withValues(alpha: 0.4)),
-                  ),
-                  child: const Text(
-                    'SIMULATE',
-                    style: TextStyle(
-                      color: Color(0xFF00FF41),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'monospace',
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ),
           ],
         );
       }),
     );
   }
 
-  Widget _scanningAnimation() {
-    return Obx(() {
-      final idx = controller.scanningIndex.value;
-      final total = controller.fingerprintMembers.length;
-      return SizedBox(
-        width: 36,
-        height: 36,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Icon(
-              PhosphorIconsRegular.fingerprint,
-              size: 28,
-              color: controller.isScanning.value
-                  ? const Color(0xFF00FF41)
-                  : const Color(0xFF2C3A3F),
-            ),
-            if (total > 0)
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF00FF41),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '$idx',
-                    style: const TextStyle(
-                      color: Color(0xFF0A0E11),
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      );
-    });
+  Widget _scannerIcon(bool connected, bool scanning) {
+    return SizedBox(
+      width: 36,
+      height: 36,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(
+            PhosphorIconsRegular.fingerprint,
+            size: 28,
+            color: connected
+                ? (scanning ? const Color(0xFF00FF41) : const Color(0xFF00FF41))
+                : const Color(0xFF2C3A3F),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSearchBar() {

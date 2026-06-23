@@ -16,7 +16,17 @@ class MemberModel {
   final double? weight;
   final double? bmi;
   final String? fitnessGoal;
+  /// Legacy ZK SDK template (~500 bytes). Not used for production matching.
   final Uint8List? fingerprintTemplate;
+
+  /// Legacy raw fingerprint image (300×375 grayscale, 112500 bytes).
+  /// Not saved for new enrollments. Existing data is migrated on-the-fly.
+  final Uint8List? fingerprintImage;
+
+  /// Dartafis serialised biometric template.
+  /// This is the primary fingerprint data used for identification.
+  /// Produced by [DartafisService.serializeTemplate].
+  final Uint8List? fingerprintData;
   final String? qrData;
   final String registrationDate;
   final String? packageId;
@@ -46,6 +56,8 @@ class MemberModel {
     this.bmi,
     this.fitnessGoal,
     this.fingerprintTemplate,
+    this.fingerprintImage,
+    this.fingerprintData,
     this.qrData,
     required this.registrationDate,
     this.packageId,
@@ -77,6 +89,8 @@ class MemberModel {
       bmi: (json['bmi'] as num?)?.toDouble(),
       fitnessGoal: json['fitness_goal'] as String?,
       fingerprintTemplate: json['fingerprint_template'] as Uint8List?,
+      fingerprintImage: json['fingerprint_image'] as Uint8List?,
+      fingerprintData: json['fingerprint_data'] as Uint8List?,
       qrData: json['qr_data'] as String?,
       registrationDate: json['registration_date'] as String,
       packageId: json['package_id'] as String?,
@@ -113,6 +127,8 @@ class MemberModel {
       'bmi': bmi,
       'fitness_goal': fitnessGoal,
       'fingerprint_template': fingerprintTemplate,
+      'fingerprint_image': fingerprintImage,
+      'fingerprint_data': fingerprintData,
       'qr_data': qrData,
       'registration_date': registrationDate,
       'package_id': packageId,
@@ -146,6 +162,8 @@ class MemberModel {
     double? bmi,
     String? fitnessGoal,
     Uint8List? fingerprintTemplate,
+    Uint8List? fingerprintImage,
+    Uint8List? fingerprintData,
     String? qrData,
     String? registrationDate,
     String? packageId,
@@ -175,6 +193,8 @@ class MemberModel {
       bmi: bmi ?? this.bmi,
       fitnessGoal: fitnessGoal ?? this.fitnessGoal,
       fingerprintTemplate: fingerprintTemplate ?? this.fingerprintTemplate,
+      fingerprintImage: fingerprintImage ?? this.fingerprintImage,
+      fingerprintData: fingerprintData ?? this.fingerprintData,
       qrData: qrData ?? this.qrData,
       registrationDate: registrationDate ?? this.registrationDate,
       packageId: packageId ?? this.packageId,

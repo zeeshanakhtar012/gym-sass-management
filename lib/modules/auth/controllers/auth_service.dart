@@ -90,12 +90,12 @@ class AuthService extends GetxService {
 
   Future<SessionModel?> restoreSession() async {
     log('[AuthService] restoreSession called');
-    final data = await _authDao.getSession();
-    if (data == null) {
-      log('[AuthService] restoreSession - no saved session');
-      return null;
-    }
     try {
+      final data = await _authDao.getSession();
+      if (data == null) {
+        log('[AuthService] restoreSession - no saved session');
+        return null;
+      }
       final json = jsonDecode(data) as Map<String, dynamic>;
       final session = SessionModel.fromJson(json);
       if (session.role == 'super_admin') {

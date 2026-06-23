@@ -2,7 +2,7 @@ import 'dart:developer';
 
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 
 class NotificationController extends GetxController {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;

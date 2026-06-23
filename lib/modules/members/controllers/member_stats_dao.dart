@@ -1,5 +1,5 @@
 import 'package:intl/intl.dart';
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 import 'member_stats.dart';
 
 class MemberStatsDao {

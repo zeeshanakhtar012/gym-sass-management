@@ -1,7 +1,7 @@
 import 'dart:developer';
 
 import 'package:sqflite/sqflite.dart';
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 
 class AuthDao {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;

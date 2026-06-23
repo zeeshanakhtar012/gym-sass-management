@@ -11,6 +11,8 @@ import '../modules/members/bindings/member_binding.dart';
 import '../modules/packages/screens/package_list_view.dart';
 import '../modules/packages/bindings/package_binding.dart';
 import '../modules/attendance/screens/attendance_view.dart';
+import '../modules/attendance/screens/fingerprint_attendance_view.dart';
+import '../modules/attendance/screens/keyboard_attendance_view.dart';
 import '../modules/attendance/bindings/attendance_binding.dart';
 import '../modules/payments/screens/payment_view.dart';
 import '../modules/payments/bindings/payment_binding.dart';
@@ -26,6 +28,8 @@ import '../modules/kiosk/screens/kiosk_view.dart';
 import '../modules/kiosk/bindings/kiosk_binding.dart';
 import '../modules/backup/screens/backup_view.dart';
 import '../modules/backup/bindings/backup_binding.dart';
+import '../modules/inventory/screens/inventory_view.dart';
+import '../modules/inventory/bindings/inventory_binding.dart';
 import '../modules/settings/screens/setting_view.dart';
 import '../modules/settings/bindings/setting_binding.dart';
 import '../modules/gyms/screens/gym_list_view.dart';
@@ -130,6 +134,16 @@ class AppDrawer extends StatelessWidget {
                     binding: AttendanceBinding(),
                   ),
                   _navItem(
+                    icon: PhosphorIconsRegular.fingerprint,
+                    label: 'FP Attendance',
+                    builder: () => const FingerprintAttendanceView(),
+                  ),
+                  _navItem(
+                    icon: PhosphorIconsRegular.keyboard,
+                    label: 'Keyboard Check-in',
+                    builder: () => const KeyboardAttendanceView(),
+                  ),
+                  _navItem(
                     icon: PhosphorIconsRegular.coin,
                     label: 'Payments',
                     builder: () => PaymentView(),
@@ -146,6 +160,12 @@ class AppDrawer extends StatelessWidget {
                     label: 'Expenses',
                     builder: () => ExpenseView(),
                     binding: ExpenseBinding(),
+                  ),
+                  _navItem(
+                    icon: PhosphorIconsRegular.package,
+                    label: 'Inventory',
+                    builder: () => const InventoryView(),
+                    binding: InventoryBinding(),
                   ),
                   _navItem(
                     icon: PhosphorIconsRegular.chartBar,
@@ -205,13 +225,13 @@ class AppDrawer extends StatelessWidget {
     return ListTile(
       leading: Icon(
         icon,
-        color: AppColors.textSecondaryL,
+        color: AppColors.textSecondaryD,
         size: 22,
       ),
       title: Text(
         label,
         style: AppTextStyles.bodyMd.copyWith(
-          color: AppColors.textPrimaryL,
+          color: AppColors.textPrimaryD,
         ),
       ),
       shape: RoundedRectangleBorder(

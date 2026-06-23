@@ -71,7 +71,12 @@ class AuthRepository {
       log('[AuthRepository] changePassword - super_admin password changed');
       return true;
     } else if (session.role == 'gym_admin') {
-      final gym = await _authDao.getGymById(session.gymId!);
+      final gymId = session.gymId;
+      if (gymId == null) {
+        log('[AuthRepository] changePassword - gymId is null');
+        return false;
+      }
+      final gym = await _authDao.getGymById(gymId);
       if (gym == null) {
         log('[AuthRepository] changePassword - gym not found');
         return false;
@@ -81,7 +86,7 @@ class AuthRepository {
         return false;
       }
       final newHash = BCrypt.hashpw(newPassword, BCrypt.gensalt());
-      await _authDao.updateGymPassword(session.gymId!, newHash);
+      await _authDao.updateGymPassword(gymId, newHash);
       log('[AuthRepository] changePassword - gym password changed');
       return true;
     }
@@ -101,7 +106,12 @@ class AuthRepository {
       log('[AuthRepository] verifyPassword - super_admin result=$result');
       return result;
     } else if (session.role == 'gym_admin') {
-      final gym = await _authDao.getGymById(session.gymId!);
+      final gymId = session.gymId;
+      if (gymId == null) {
+        log('[AuthRepository] verifyPassword - gymId is null');
+        return false;
+      }
+      final gym = await _authDao.getGymById(gymId);
       if (gym == null) {
         log('[AuthRepository] verifyPassword - gym not found');
         return false;

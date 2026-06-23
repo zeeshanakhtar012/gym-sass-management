@@ -44,7 +44,7 @@ class InfoCard extends StatelessWidget {
                   ),
                   Expanded(
                     child: Text(row.value, style: AppTextStyles.bodyMd.copyWith(
-                      color: row.color ?? AppColors.textPrimaryL,
+                      color: row.color ?? AppColors.textPrimaryD,
                       fontWeight: row.isBold ? FontWeight.w600 : null,
                     )),
                   ),

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/inventory_controller.dart';
 
 class InventoryView extends GetView<InventoryController> {
@@ -165,7 +165,7 @@ class InventoryView extends GetView<InventoryController> {
                     Icon(PhosphorIconsRegular.arrowArcLeft, size: 14, color: AppColors.neutralGray),
                     const SizedBox(width: 4),
                     Text('Reorder at: $reorderLevel',
-                        style: AppTextStyles.bodySm.copyWith(color: AppColors.textSecondaryL)),
+                        style: AppTextStyles.bodySm.copyWith(color: AppColors.textSecondaryD)),
                   ],
                 ),
                 Row(
@@ -238,7 +238,7 @@ class InventoryView extends GetView<InventoryController> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
+                  headingRowColor: WidgetStateProperty.all(AppColors.surfaceElevated),
                   columns: const [
                     DataColumn(label: Text('Name')),
                     DataColumn(label: Text('Qty')),
@@ -295,7 +295,7 @@ class InventoryView extends GetView<InventoryController> {
           Icon(PhosphorIconsRegular.package, size: 64, color: AppColors.neutralGray),
           const SizedBox(height: AppSpacing.md),
           Text('No items in inventory',
-              style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryL)),
+              style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryD)),
           const SizedBox(height: AppSpacing.sm),
           Text('Tap + to add an item',
               style: AppTextStyles.bodySm),

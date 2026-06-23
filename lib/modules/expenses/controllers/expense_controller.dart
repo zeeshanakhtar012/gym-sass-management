@@ -2,7 +2,7 @@ import 'dart:developer';
 
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 
 class ExpenseController extends GetxController {
   final RxList<Map<String, dynamic>> expenses = <Map<String, dynamic>>[].obs;

@@ -3,7 +3,7 @@ import 'dart:developer';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 
 class PaymentController extends GetxController {
   final RxList<Map<String, dynamic>> payments = <Map<String, dynamic>>[].obs;
@@ -76,7 +76,8 @@ class PaymentController extends GetxController {
     final thisMonth = DateFormat('yyyy-MM').format(DateTime.now());
     int tRev = 0, mRev = 0;
     for (final p in payments) {
-      final date = (p['payment_date'] as String? ?? '').substring(0, 10);
+      final rawDate = p['payment_date'] as String? ?? '';
+      final date = rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate;
       final total = p['total'] as int? ?? 0;
       if (date == today) tRev += total;
       if (date.startsWith(thisMonth)) mRev += total;

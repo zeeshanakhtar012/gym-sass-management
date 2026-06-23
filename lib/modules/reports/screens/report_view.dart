@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/report_controller.dart';
 
 class ReportView extends GetView<ReportController> {
@@ -30,7 +30,7 @@ class ReportView extends GetView<ReportController> {
           bottom: const TabBar(
             isScrollable: true,
             labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.textSecondaryL,
+            unselectedLabelColor: AppColors.textSecondaryD,
             indicatorColor: AppColors.primary,
             tabs: [
               Tab(icon: Icon(PhosphorIconsRegular.chartBar), text: 'Overview'),
@@ -416,7 +416,7 @@ class _FinancialTab extends GetView<ReportController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: AppTextStyles.bodySm.copyWith(
-                    color: AppColors.textSecondaryL)),
+                    color: AppColors.textSecondaryD)),
                 const SizedBox(height: 2),
                 Text(value, style: AppTextStyles.headingSm.copyWith(color: color)),
               ],

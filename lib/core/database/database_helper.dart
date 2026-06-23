@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -37,6 +39,18 @@ class DatabaseHelper {
     if (_database != null) return _database!;
     _database = await _initDatabase();
     return _database!;
+  }
+
+  Future<void> close() async {
+    final db = _database;
+    if (db != null && db.isOpen) {
+      await db.close();
+    }
+    _database = null;
+  }
+
+  Future<void> reopen() async {
+    _database = await _initDatabase();
   }
 
   Future<Database> _initDatabase() async {
@@ -129,6 +143,8 @@ class DatabaseHelper {
         bmi REAL,
         fitness_goal TEXT,
         fingerprint_template BLOB,
+        fingerprint_image BLOB,
+        fingerprint_data BLOB,
         qr_data TEXT,
         registration_date TEXT NOT NULL DEFAULT (datetime('now')),
         package_id TEXT,
@@ -333,6 +349,31 @@ class DatabaseHelper {
       await db.execute("ALTER TABLE members ADD COLUMN last_fee_paid_date TEXT");
       await db.execute("ALTER TABLE members ADD COLUMN fee_due_date TEXT");
     }
+    if (oldVersion < 4) {
+      final corrupted = await db.rawQuery(
+        "SELECT COUNT(*) as c FROM members WHERE length(fingerprint_template) > 1000"
+      );
+      final count = (corrupted.first['c'] as int?) ?? 0;
+      if (count > 0) {
+        await db.rawQuery(
+          "UPDATE members SET fingerprint_template = NULL WHERE length(fingerprint_template) > 1000"
+        );
+        log('[DatabaseHelper] migration v4: cleared $count corrupted fingerprint templates (>1000 bytes)');
+      }
+    }
+    if (oldVersion < 5) {
+      await db.execute("ALTER TABLE members ADD COLUMN fingerprint_image BLOB");
+      log('[DatabaseHelper] migration v5: added fingerprint_image column to members');
+    }
+    if (oldVersion < 6) {
+      // v6: Add fingerprint_data column for dartafis serialized templates.
+      // This replaces fingerprint_image for new enrollments.
+      // Existing fingerprint_image data is retained for on-the-fly migration
+      // at attendance time.
+      await db.execute(
+          "ALTER TABLE members ADD COLUMN fingerprint_data BLOB");
+      log('[DatabaseHelper] migration v6: added fingerprint_data column to members');
+    }
     await db.execute("INSERT INTO schema_version (version) VALUES ($newVersion)");
   }
 
@@ -374,10 +415,4 @@ class DatabaseHelper {
     });
   }
 
-  Future<void> close() async {
-    if (_database != null) {
-      await _database!.close();
-      _database = null;
-    }
-  }
 }

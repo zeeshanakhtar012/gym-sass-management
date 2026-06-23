@@ -2,7 +2,7 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 
 class ReportController extends GetxController {
   final RxMap<String, dynamic> reportData = <String, dynamic>{}.obs;

@@ -1,7 +1,7 @@
 import 'dart:developer';
 
 import 'package:intl/intl.dart';
-import '../../../../core/database/database_helper.dart';
+import '../../../core/database/database_helper.dart';
 import 'dashboard_stats.dart';
 
 class DashboardDao {
@@ -91,6 +91,17 @@ class DashboardDao {
     return (result.first['c'] as int?) ?? 0;
   }
 
+  Future<int> getFingerprintMembers(String gymId) async {
+    final db = await _dbHelper.database;
+    final filter = _gymFilter(gymId);
+    final args = _gymArgs(gymId);
+    final result = await db.rawQuery(
+      "SELECT COUNT(*) as c FROM members WHERE ${filter}(fingerprint_image IS NOT NULL OR fingerprint_template IS NOT NULL OR fingerprint_data IS NOT NULL)",
+      args,
+    );
+    return (result.first['c'] as int?) ?? 0;
+  }
+
   Future<int> getPendingPayments(String gymId) async {
     final db = await _dbHelper.database;
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
@@ -109,23 +120,25 @@ class DashboardDao {
       getTotalMembers(gymId),
       getActiveMembers(gymId),
       getExpiredMembers(gymId),
+      getFingerprintMembers(gymId),
       getTodayAttendance(gymId),
       getCurrentlyInside(gymId),
       getMonthlyRevenue(gymId),
       getMonthlyExpenses(gymId),
       getPendingPayments(gymId),
     ]);
-    log('[DashboardDao] Stats results: totalMembers=${results[0]}, active=${results[1]}, revenue=${results[5]}');
+    log('[DashboardDao] Stats results: totalMembers=${results[0]}, active=${results[1]}, fp=${results[3]}, revenue=${results[6]}');
     return DashboardStats(
       totalMembers: results[0],
       activeMembers: results[1],
       expiredMembers: results[2],
-      todayAttendance: results[3],
-      currentlyInside: results[4],
-      monthlyRevenue: results[5],
-      monthlyExpenses: results[6],
-      monthlyProfit: results[5] - results[6],
-      pendingPayments: results[7],
+      fingerprintMembers: results[3],
+      todayAttendance: results[4],
+      currentlyInside: results[5],
+      monthlyRevenue: results[6],
+      monthlyExpenses: results[7],
+      monthlyProfit: results[6] - results[7],
+      pendingPayments: results[8],
     );
   }
 

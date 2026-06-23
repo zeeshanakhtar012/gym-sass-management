@@ -8,10 +8,10 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/database/database_helper.dart';
-import '../../../../core/services/backup_service.dart';
-import '../../../../core/constants/app_constants.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../core/database/database_helper.dart';
+import '../../../core/services/backup_service.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_colors.dart';
 
 class BackupController extends GetxController {
   final BackupService _backupService = BackupService.instance;

@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/formatters.dart';
-import '../../../../core/helpers/responsive.dart';
-import '../../../../core/constants/app_constants.dart';
-import '../../../../widgets/app_drawer.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/formatters.dart';
+import '../../../core/helpers/responsive.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../widgets/app_drawer.dart';
 import '../controllers/expense_controller.dart';
 
 class ExpenseView extends GetView<ExpenseController> {
@@ -181,7 +181,7 @@ class ExpenseView extends GetView<ExpenseController> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('This Month Total',
-                            style: AppTextStyles.bodySm.copyWith(color: AppColors.textSecondaryL)),
+                            style: AppTextStyles.bodySm.copyWith(color: AppColors.textSecondaryD)),
                         const SizedBox(height: 4),
                         Text(Formatters.currency(monthlyTotal),
                             style: AppTextStyles.headingLg.copyWith(color: AppColors.danger)),
@@ -336,7 +336,7 @@ class ExpenseView extends GetView<ExpenseController> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(AppColors.bgLight),
+                  headingRowColor: WidgetStateProperty.all(AppColors.surfaceElevated),
                   columns: const [
                     DataColumn(label: Text('Category')),
                     DataColumn(label: Text('Amount')),
@@ -396,7 +396,7 @@ class ExpenseView extends GetView<ExpenseController> {
           Icon(PhosphorIconsRegular.receipt, size: 64, color: AppColors.neutralGray),
           const SizedBox(height: AppSpacing.md),
           Text('No expenses found',
-              style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryL)),
+              style: AppTextStyles.bodyLg.copyWith(color: AppColors.textSecondaryD)),
           const SizedBox(height: AppSpacing.sm),
           Text('Tap + to add an expense',
               style: AppTextStyles.bodySm),

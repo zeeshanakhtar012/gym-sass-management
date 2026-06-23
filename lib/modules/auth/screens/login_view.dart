@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/helpers/responsive.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/helpers/responsive.dart';
 import '../controllers/auth_controller.dart';
 
 class LoginView extends GetView<AuthController> {
@@ -13,7 +13,6 @@ class LoginView extends GetView<AuthController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bgLight,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -62,7 +61,7 @@ class LoginView extends GetView<AuthController> {
         Text(
           'Offline-First Gym Management',
           textAlign: TextAlign.center,
-          style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondaryL),
+          style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondaryD),
         ),
         const SizedBox(height: AppSpacing.xl),
 
@@ -179,13 +178,11 @@ class LoginView extends GetView<AuthController> {
                     height: 22,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      color: Colors.white,
                     ),
                   )
                 : Text(
                     'Login',
                     style: AppTextStyles.bodyLg.copyWith(
-                      color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -207,10 +204,10 @@ class LoginView extends GetView<AuthController> {
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            color: selected ? AppColors.primarySurface : AppColors.surfaceLight,
+            color: selected ? AppColors.primarySurface : AppColors.surfaceElevated,
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             border: Border.all(
-              color: selected ? AppColors.primary : AppColors.borderLight,
+              color: selected ? AppColors.primary : AppColors.borderDark,
               width: selected ? 2 : 1,
             ),
           ),
@@ -220,13 +217,13 @@ class LoginView extends GetView<AuthController> {
               Icon(
                 isGymMode ? PhosphorIconsRegular.buildings : PhosphorIconsRegular.shieldStar,
                 size: 18,
-                color: selected ? AppColors.primary : AppColors.textSecondaryL,
+                color: selected ? AppColors.primary : AppColors.textSecondaryD,
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 label,
                 style: AppTextStyles.label.copyWith(
-                  color: selected ? AppColors.primary : AppColors.textSecondaryL,
+                  color: selected ? AppColors.primary : AppColors.textSecondaryD,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),

@@ -4,7 +4,7 @@ class AppConstants {
   static const String appName = 'Gym ERP';
   static const String appVersion = '1.0.0';
   static const String dbName = 'gym_erp.db';
-  static const int dbVersion = 3;
+  static const int dbVersion = 6;
 
   static const String defaultAdminUsername = 'admin';
   static const String defaultAdminPassword = 'admin123';
@@ -58,4 +58,25 @@ class AppConstants {
 
   static const String backupDirName = 'Backups';
   static const int maxBackupCopies = 10;
+
+  // === Fingerprint / Biometric Configuration ===
+  /// Minimum matching score for dartafis-based fingerprint identification.
+  /// Scores below this are rejected as "Unknown User".
+  /// Recommended range: 25-50 (higher = stricter).
+  static const double fingerprintMatchThreshold = 20.0;
+
+  /// Verification threshold used when checking if a newly enrolled fingerprint
+  /// already exists in the database (template deduplication).
+  static const double fingerprintEnrollDedupeThreshold = 40.0;
+
+  /// Maximum number of scan attempts before giving up.
+  static const int fingerprintMaxScanAttempts = 150;
+
+  /// Delay (ms) between scan retry attempts.
+  static const int fingerprintScanRetryDelayMs = 200;
+
+  /// The width/height of the raw fingerprint image from the ZK9500 scanner.
+  static const int fingerprintImageWidth = 300;
+  static const int fingerprintImageHeight = 375;
+  static const int fingerprintImageSize = 300 * 375; // 112500
 }
