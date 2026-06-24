@@ -11,7 +11,7 @@ class AuthController extends GetxController {
 
   final RxBool isLoading = false.obs;
   final RxBool isPasswordVisible = false.obs;
-  final RxBool isGymLogin = false.obs;
+  final RxBool isGymLogin = true.obs;
   final RxString errorMessage = ''.obs;
 
   final usernameController = TextEditingController();

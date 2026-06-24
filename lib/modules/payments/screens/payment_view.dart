@@ -9,6 +9,7 @@ import '../../../core/helpers/formatters.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../widgets/app_drawer.dart';
 import '../controllers/payment_controller.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class PaymentView extends GetView<PaymentController> {
   const PaymentView({super.key});
@@ -312,7 +313,7 @@ class PaymentView extends GetView<PaymentController> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('New Payment', style: AppTextStyles.headingMd),
+                  Text('New Payment', style: AppTextStyles.headingMd),
                   IconButton(
                     icon: const Icon(PhosphorIconsRegular.x),
                     onPressed: () => Get.back(),
@@ -326,7 +327,7 @@ class PaymentView extends GetView<PaymentController> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Member *', style: AppTextStyles.label),
+                    Text('Member *', style: AppTextStyles.label),
                     const SizedBox(height: AppSpacing.sm),
                     Obx(() {
                       if (selectedMemberId.value.isEmpty) {
@@ -385,7 +386,7 @@ class PaymentView extends GetView<PaymentController> {
                       );
                     }),
                     const SizedBox(height: AppSpacing.md),
-                    const Text('Package', style: AppTextStyles.label),
+                    Text('Package', style: AppTextStyles.label),
                     const SizedBox(height: AppSpacing.sm),
                     Obx(() => DropdownButtonFormField<String>(
                       value: selectedPackageId.value.isEmpty ? null : selectedPackageId.value,
@@ -465,7 +466,7 @@ class PaymentView extends GetView<PaymentController> {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    const Text('Payment Method *', style: AppTextStyles.label),
+                    Text('Payment Method *', style: AppTextStyles.label),
                     const SizedBox(height: AppSpacing.sm),
                     Obx(() => DropdownButtonFormField<String>(
                       value: selectedMethod.value,
@@ -523,12 +524,12 @@ class PaymentView extends GetView<PaymentController> {
                 child: ElevatedButton(
                   onPressed: () {
                     if (selectedMemberId.value.isEmpty) {
-                      Get.snackbar('Error', 'Please select a member');
+                      AppPopup.error('Please select a member');
                       return;
                     }
                     final amount = int.tryParse(amountCtrl.text.trim());
                     if (amount == null || amount <= 0) {
-                      Get.snackbar('Error', 'Please enter a valid amount');
+                      AppPopup.error('Please enter a valid amount');
                       return;
                     }
                     Get.back();

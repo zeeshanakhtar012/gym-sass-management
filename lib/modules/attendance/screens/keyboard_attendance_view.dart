@@ -6,6 +6,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../../core/database/database_helper.dart';
 import '../../auth/controllers/auth_service.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class KeyboardAttendanceView extends StatefulWidget {
   final String gymId;
@@ -109,9 +110,7 @@ class _KeyboardAttendanceViewState extends State<KeyboardAttendanceView> {
         whereArgs: [gymId, memberId, today],
       );
       if (existing.isNotEmpty) {
-        Get.snackbar('Notice', 'Already checked in today',
-          backgroundColor: Colors.orange, colorText: Colors.white,
-        );
+        AppPopup.warning('Already checked in today');
         return;
       }
 
@@ -140,9 +139,7 @@ class _KeyboardAttendanceViewState extends State<KeyboardAttendanceView> {
       });
     } catch (e) {
       debugPrint('[KeyboardAttendance] checkIn error: $e');
-      Get.snackbar('Error', 'Check-in failed: $e',
-        backgroundColor: Colors.red, colorText: Colors.white,
-      );
+      AppPopup.error('Check-in failed: $e');
     }
   }
 

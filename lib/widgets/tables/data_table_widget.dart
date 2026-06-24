@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 
 class AppDataTable extends StatelessWidget {
@@ -27,7 +26,6 @@ class AppDataTable extends StatelessWidget {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            headingRowColor: WidgetStateProperty.all(AppColors.surfaceElevated),
             columns: columns,
             rows: rows,
             columnSpacing: AppSpacing.md,

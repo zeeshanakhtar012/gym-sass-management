@@ -178,7 +178,6 @@ class GymListView extends GetView<GymListController> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(AppColors.surfaceElevated),
                   columns: const [
                     DataColumn(label: Text('Logo')),
                     DataColumn(label: Text('Name')),

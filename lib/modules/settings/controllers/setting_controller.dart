@@ -10,6 +10,7 @@ import '../../auth/controllers/auth_service.dart';
 import '../../auth/controllers/auth_repository.dart';
 import '../../auth/controllers/auth_dao.dart';
 import '../../auth/screens/login_view.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class SettingController extends GetxController {
   final RxMap<String, dynamic> settings = <String, dynamic>{}.obs;
@@ -73,7 +74,7 @@ class SettingController extends GetxController {
     } catch (e, stack) {
       log('[SettingController] loadSettings failed: $e');
       log('[SettingController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load settings');
+      AppPopup.error('Failed to load settings');
     } finally {
       isLoading.value = false;
     }
@@ -107,23 +108,37 @@ class SettingController extends GetxController {
     } catch (e, stack) {
       log('[SettingController] updateSetting failed: $e');
       log('[SettingController] stack: $stack');
-      Get.snackbar('Error', 'Failed to update setting');
+      AppPopup.error('Failed to update setting');
     }
   }
 
   Future<void> updateTheme(String gymId, String value) async {
     await updateSetting(gymId, 'theme', value);
-    Get.snackbar('Success', 'Theme updated to $value');
+    _applyTheme(value);
+    AppPopup.success('Theme updated to $value');
+  }
+
+  void _applyTheme(String value) {
+    switch (value) {
+      case 'light':
+        Get.changeThemeMode(ThemeMode.light);
+        break;
+      case 'dark':
+        Get.changeThemeMode(ThemeMode.dark);
+        break;
+      default:
+        Get.changeThemeMode(ThemeMode.system);
+    }
   }
 
   Future<void> updateCurrency(String gymId, String value) async {
     await updateSetting(gymId, 'currency', value);
-    Get.snackbar('Success', 'Currency updated to $value');
+    AppPopup.success('Currency updated to $value');
   }
 
   Future<void> updateBackupFrequency(String gymId, String value) async {
     await updateSetting(gymId, 'backup_frequency', value);
-    Get.snackbar('Success', 'Backup frequency updated to $value');
+    AppPopup.success('Backup frequency updated to $value');
   }
 
   /// Change the current user's password (verifies old password).
@@ -203,7 +218,7 @@ class SettingController extends GetxController {
       final dbPath = await DatabaseHelper.databasePath;
       final file = File(dbPath);
       if (!file.existsSync()) {
-        Get.snackbar('Error', 'Database file not found');
+        AppPopup.error('Database file not found');
         return;
       }
       final result = await FilePicker.platform.saveFile(
@@ -218,11 +233,11 @@ class SettingController extends GetxController {
       }
       await file.copy(result);
       log('[SettingController] exportDatabase - exported to $result');
-      Get.snackbar('Success', 'Database exported successfully');
+      AppPopup.success('Database exported successfully');
     } catch (e, stack) {
       log('[SettingController] exportDatabase failed: $e');
       log('[SettingController] stack: $stack');
-      Get.snackbar('Error', 'Failed to export database: $e');
+      AppPopup.error('Failed to export database: $e');
     }
   }
 
@@ -240,7 +255,7 @@ class SettingController extends GetxController {
       }
       final source = File(result.files.single.path!);
       if (!source.existsSync()) {
-        Get.snackbar('Error', 'Selected file not found');
+        AppPopup.error('Selected file not found');
         return;
       }
       final confirm = await Get.dialog<bool>(
@@ -266,14 +281,14 @@ class SettingController extends GetxController {
       final dbPath = await DatabaseHelper.databasePath;
       await source.copy(dbPath);
       log('[SettingController] importDatabase - replaced with $dbPath');
-      Get.snackbar('Success', 'Database imported. Restarting app...');
+      AppPopup.success('Database imported. Restarting app...');
       await Future.delayed(const Duration(seconds: 1));
       _authService.logout();
       Get.offAll(() => const LoginView());
     } catch (e, stack) {
       log('[SettingController] importDatabase failed: $e');
       log('[SettingController] stack: $stack');
-      Get.snackbar('Error', 'Failed to import database: $e');
+      AppPopup.error('Failed to import database: $e');
     }
   }
 }

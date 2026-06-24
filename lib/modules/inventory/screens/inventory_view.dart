@@ -238,7 +238,6 @@ class InventoryView extends GetView<InventoryController> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(AppColors.surfaceElevated),
                   columns: const [
                     DataColumn(label: Text('Name')),
                     DataColumn(label: Text('Qty')),

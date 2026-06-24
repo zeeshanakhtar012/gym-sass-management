@@ -90,114 +90,114 @@ class AppDrawer extends StatelessWidget {
               padding: EdgeInsets.zero,
               children: [
                 if (isSuperAdmin) ...[
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.gauge,
                     label: 'Dashboard',
                     builder: () => const DashboardView(),
                     binding: DashboardBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.buildings,
                     label: 'Gyms',
                     builder: () => const GymListView(),
                     binding: GymBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.chartBar,
                     label: 'Reports',
                     builder: () => const ReportView(),
                     binding: ReportBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.gear,
                     label: 'Settings',
                     builder: () => const SettingView(),
                     binding: SettingBinding(),
                   ),
                 ] else ...[
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.gauge,
                     label: 'Dashboard',
                     builder: () => const DashboardView(),
                     binding: DashboardBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.users,
                     label: 'Members',
                     builder: () => MemberListView(),
                     binding: MemberBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.tag,
                     label: 'Packages',
                     builder: () => const PackageListView(),
                     binding: PackageBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.calendarCheck,
                     label: 'Attendance',
                     builder: () => AttendanceView(),
                     binding: AttendanceBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.fingerprint,
                     label: 'FP Attendance',
                     builder: () => const FingerprintAttendanceView(),
                   ),
-                  _navItem(
-                    icon: PhosphorIconsRegular.keyboard,
-                    label: 'Keyboard Check-in',
-                    builder: () => const KeyboardAttendanceView(),
-                  ),
-                  _navItem(
+                  // _navItem(context, 
+                  //   icon: PhosphorIconsRegular.keyboard,
+                  //   label: 'Keyboard Check-in',
+                  //   builder: () => const KeyboardAttendanceView(),
+                  // ),
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.coin,
                     label: 'Payments',
                     builder: () => PaymentView(),
                     binding: PaymentBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.receipt,
                     label: 'Invoices',
                     builder: () => InvoiceView(),
                     binding: InvoiceBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.receiptX,
                     label: 'Expenses',
                     builder: () => ExpenseView(),
                     binding: ExpenseBinding(),
                   ),
-                  _navItem(
-                    icon: PhosphorIconsRegular.package,
-                    label: 'Inventory',
-                    builder: () => const InventoryView(),
-                    binding: InventoryBinding(),
-                  ),
-                  _navItem(
+                  // _navItem(context, 
+                  //   icon: PhosphorIconsRegular.package,
+                  //   label: 'Inventory',
+                  //   builder: () => const InventoryView(),
+                  //   binding: InventoryBinding(),
+                  // ),
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.chartBar,
                     label: 'Reports',
                     builder: () => const ReportView(),
                     binding: ReportBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.bell,
                     label: 'Notifications',
                     builder: () => NotificationView(),
                     binding: NotificationBinding(),
                   ),
-                  _navItem(
-                    icon: PhosphorIconsRegular.monitor,
-                    label: 'Kiosk Mode',
-                    builder: () => const KioskView(),
-                    binding: KioskBinding(),
-                  ),
-                  _navItem(
+                  // _navItem(context, 
+                  //   icon: PhosphorIconsRegular.monitor,
+                  //   label: 'Kiosk Mode',
+                  //   builder: () => const KioskView(),
+                  //   binding: KioskBinding(),
+                  // ),
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.database,
                     label: 'Backup',
                     builder: () => const BackupView(),
                     binding: BackupBinding(),
                   ),
-                  _navItem(
+                  _navItem(context, 
                     icon: PhosphorIconsRegular.gear,
                     label: 'Settings',
                     builder: () => const SettingView(),
@@ -222,7 +222,8 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
-  Widget _navItem({
+  Widget _navItem(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required Widget Function() builder,
@@ -231,13 +232,13 @@ class AppDrawer extends StatelessWidget {
     return ListTile(
       leading: Icon(
         icon,
-        color: AppColors.textSecondaryD,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
         size: 22,
       ),
       title: Text(
         label,
         style: AppTextStyles.bodyMd.copyWith(
-          color: AppColors.textPrimaryD,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
       shape: RoundedRectangleBorder(

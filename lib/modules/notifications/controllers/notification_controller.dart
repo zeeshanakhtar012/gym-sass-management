@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class NotificationController extends GetxController {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
@@ -41,7 +42,7 @@ class NotificationController extends GetxController {
     } catch (e, stack) {
       log('[NotificationController] loadNotifications failed: $e');
       log('[NotificationController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load notifications: $e');
+      AppPopup.error('Failed to load notifications: $e');
     } finally {
       isLoading.value = false;
     }
@@ -67,7 +68,7 @@ class NotificationController extends GetxController {
     } catch (e, stack) {
       log('[NotificationController] markAsRead failed: $e');
       log('[NotificationController] stack: $stack');
-      Get.snackbar('Error', 'Failed to mark as read: $e');
+      AppPopup.error('Failed to mark as read: $e');
     }
   }
 
@@ -87,11 +88,11 @@ class NotificationController extends GetxController {
       notifications.refresh();
       unreadCount.value = 0;
       log('[NotificationController] markAllAsRead successful');
-      Get.snackbar('Success', 'All notifications marked as read');
+      AppPopup.success('All notifications marked as read');
     } catch (e, stack) {
       log('[NotificationController] markAllAsRead failed: $e');
       log('[NotificationController] stack: $stack');
-      Get.snackbar('Error', 'Failed to mark all as read: $e');
+      AppPopup.error('Failed to mark all as read: $e');
     }
   }
 
@@ -106,7 +107,7 @@ class NotificationController extends GetxController {
     } catch (e, stack) {
       log('[NotificationController] deleteNotification failed: $e');
       log('[NotificationController] stack: $stack');
-      Get.snackbar('Error', 'Failed to delete notification: $e');
+      AppPopup.error('Failed to delete notification: $e');
     }
   }
 
@@ -118,11 +119,11 @@ class NotificationController extends GetxController {
       notifications.clear();
       unreadCount.value = 0;
       log('[NotificationController] clearAll successful');
-      Get.snackbar('Success', 'All notifications cleared');
+      AppPopup.success('All notifications cleared');
     } catch (e, stack) {
       log('[NotificationController] clearAll failed: $e');
       log('[NotificationController] stack: $stack');
-      Get.snackbar('Error', 'Failed to clear notifications: $e');
+      AppPopup.error('Failed to clear notifications: $e');
     }
   }
 
@@ -152,7 +153,7 @@ class NotificationController extends GetxController {
     } catch (e, stack) {
       log('[NotificationController] createNotification failed: $e');
       log('[NotificationController] stack: $stack');
-      Get.snackbar('Error', 'Failed to create notification: $e');
+      AppPopup.error('Failed to create notification: $e');
     }
   }
 

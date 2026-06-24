@@ -335,7 +335,7 @@ class _MemberFormViewState extends State<MemberFormView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Package', style: AppTextStyles.headingSm),
+        Text('Package', style: AppTextStyles.headingSm),
         const SizedBox(height: AppSpacing.sm),
         Obx(() {
           final items = controller.packages
@@ -381,7 +381,7 @@ class _MemberFormViewState extends State<MemberFormView> {
             children: [
               Row(
                 children: [
-                  const Text('Payment', style: AppTextStyles.headingSm),
+                  Text('Payment', style: AppTextStyles.headingSm),
                   const Spacer(),
                   Text('Collect Payment', style: AppTextStyles.bodyMd),
                   const SizedBox(width: AppSpacing.sm),

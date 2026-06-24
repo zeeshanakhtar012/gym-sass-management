@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -37,14 +36,10 @@ class ExpenseView extends GetView<ExpenseController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppDrawer(),
       appBar: AppBar(
         title: const Text('Expenses'),
-        actions: [
-          IconButton(
-            icon: const Icon(PhosphorIconsRegular.arrowClockwise),
-            onPressed: () => controller.loadExpenses(''),
-          ),
-        ],
+
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
@@ -336,7 +331,6 @@ class ExpenseView extends GetView<ExpenseController> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(AppColors.surfaceElevated),
                   columns: const [
                     DataColumn(label: Text('Category')),
                     DataColumn(label: Text('Amount')),

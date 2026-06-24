@@ -6,6 +6,7 @@ import '../../../core/services/zkteco_scanner_service.dart';
 import '../../../core/services/fingerprint_scanner_service.dart';
 import 'dashboard_repository.dart';
 import 'dashboard_stats.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class DashboardController extends GetxController {
   final DashboardRepository _dashboardRepository = Get.find<DashboardRepository>();
@@ -77,7 +78,7 @@ class DashboardController extends GetxController {
     } catch (e, stack) {
       log('[DashboardController] Error loading dashboard: $e');
       log('[DashboardController] Stack: $stack');
-      Get.snackbar('Error', 'Failed to load dashboard data: $e');
+      AppPopup.error('Failed to load dashboard data: $e');
     } finally {
       isLoading.value = false;
       log('[DashboardController] isLoading set to false');

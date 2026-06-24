@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../../auth/controllers/auth_service.dart';
 import 'member_repository.dart';
 import 'member_model.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class MemberListController extends GetxController {
   final MemberRepository _memberRepository = Get.find<MemberRepository>();
@@ -44,7 +45,7 @@ class MemberListController extends GetxController {
     } catch (e, stack) {
       log('[MemberListController] loadMembers failed: $e');
       log('[MemberListController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load members');
+      AppPopup.error('Failed to load members');
     } finally {
       isLoading.value = false;
     }
@@ -72,16 +73,16 @@ class MemberListController extends GetxController {
       if (success) {
         members.removeWhere((m) => m.memberId == id);
         log('[MemberListController] deleteMember successful');
-        Get.snackbar('Success', 'Member deleted successfully');
+        AppPopup.success('Member deleted successfully');
       } else {
         log('[MemberListController] deleteMember failed');
-        Get.snackbar('Error', 'Failed to delete member');
+        AppPopup.error('Failed to delete member');
       }
       return success;
     } catch (e, stack) {
       log('[MemberListController] deleteMember failed: $e');
       log('[MemberListController] stack: $stack');
-      Get.snackbar('Error', 'Failed to delete member');
+      AppPopup.error('Failed to delete member');
       return false;
     }
   }

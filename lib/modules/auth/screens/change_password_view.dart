@@ -8,6 +8,7 @@ import '../../../core/helpers/validators.dart';
 import '../controllers/auth_controller.dart';
 import '../../dashboard/screens/dashboard_view.dart';
 import '../../dashboard/bindings/dashboard_binding.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class ChangePasswordView extends StatefulWidget {
   const ChangePasswordView({super.key});
@@ -151,20 +152,10 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                                   DashboardBinding().dependencies();
                                   Get.offAll(() => const DashboardView());
                                 } else {
-                                  Get.snackbar(
-                                    'Error',
-                                    'Current password is incorrect',
-                                    backgroundColor: AppColors.danger,
-                                    colorText: Colors.white,
-                                  );
+                                  AppPopup.error('Current password is incorrect');
                                 }
                               } catch (e) {
-                                Get.snackbar(
-                                  'Error',
-                                  e.toString(),
-                                  backgroundColor: AppColors.danger,
-                                  colorText: Colors.white,
-                                );
+                                AppPopup.error(e.toString());
                               } finally {
                                 _authController.isLoading.value = false;
                               }

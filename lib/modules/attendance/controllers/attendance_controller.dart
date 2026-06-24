@@ -8,6 +8,7 @@ import '../../../core/services/dartafis_service.dart';
 import '../../../core/services/zkteco_scanner_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../auth/controllers/auth_service.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class AttendanceController extends GetxController {
   final ZKTecoBiometricService _scanner = ZKTecoBiometricService();
@@ -67,7 +68,7 @@ class AttendanceController extends GetxController {
     } catch (e, stack) {
       log('[AttendanceController] loadAttendance failed: $e');
       log('[AttendanceController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load attendance: $e');
+      AppPopup.error('Failed to load attendance: $e');
     } finally {
       isLoading.value = false;
     }
@@ -89,7 +90,7 @@ class AttendanceController extends GetxController {
     } catch (e, stack) {
       log('[AttendanceController] loadMembers failed: $e');
       log('[AttendanceController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load members: $e');
+      AppPopup.error('Failed to load members: $e');
     }
   }
 
@@ -234,7 +235,7 @@ class AttendanceController extends GetxController {
     } catch (e, stack) {
       log('[AttendanceController] loadCheckedInToday failed: $e');
       log('[AttendanceController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load today attendance: $e');
+      AppPopup.error('Failed to load today attendance: $e');
     }
   }
 

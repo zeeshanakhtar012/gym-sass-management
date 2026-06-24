@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/helpers/formatters.dart';
-import '../../../core/helpers/responsive.dart';
 import '../../../widgets/app_drawer.dart';
 import '../controllers/invoice_controller.dart';
 
@@ -169,6 +167,12 @@ class InvoiceView extends GetView<InvoiceController> {
                 ),
                 const SizedBox(width: 4),
                 _buildActionButton(
+                  PhosphorIconsRegular.downloadSimple,
+                  AppColors.primary,
+                  () => controller.downloadInvoice(invoice),
+                ),
+                const SizedBox(width: 4),
+                _buildActionButton(
                   PhosphorIconsRegular.trash,
                   AppColors.danger,
                   () => _confirmDelete(invoiceId),
@@ -313,36 +317,50 @@ class InvoiceView extends GetView<InvoiceController> {
                 if (memberAddress != null) Text(memberAddress, style: AppTextStyles.bodySm),
                 Divider(height: AppSpacing.lg),
                 if (packageName != null) ...[
-                  _detailRow('Package', packageName),
+                  _detailRow('Package', packageName, icon: PhosphorIconsRegular.package),
                   SizedBox(height: AppSpacing.sm),
                 ],
-                _detailRow('Amount', Formatters.currency(amount)),
+                _detailRow('Amount', Formatters.currency(amount), icon: PhosphorIconsRegular.coin),
                 SizedBox(height: AppSpacing.sm),
-                _detailRow('Discount', Formatters.currency(discount)),
+                _detailRow('Discount', Formatters.currency(discount), icon: PhosphorIconsRegular.percent),
                 SizedBox(height: AppSpacing.sm),
-                _detailRow('Tax', Formatters.currency(tax)),
+                _detailRow('Tax', Formatters.currency(tax), icon: PhosphorIconsRegular.receipt),
                 Divider(height: AppSpacing.md),
-                _detailRow('Total', Formatters.currency(total), isTotal: true),
+                _detailRow('Total', Formatters.currency(total), isTotal: true, icon: PhosphorIconsRegular.currencyCircleDollar),
                 SizedBox(height: AppSpacing.md),
                 if (paymentMethod != null) ...[
                   Divider(height: AppSpacing.sm),
-                  _detailRow('Payment Method', paymentMethod),
+                  _detailRow('Payment Method', paymentMethod, icon: PhosphorIconsRegular.creditCard),
                 ],
                 SizedBox(height: AppSpacing.lg),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Get.back();
-                      controller.printInvoice(invoice);
-                    },
-                    icon: const Icon(PhosphorIconsRegular.printer, size: 18),
-                    label: const Text('Print Invoice'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Get.back();
+                          controller.printInvoice(invoice);
+                        },
+                        icon: const Icon(PhosphorIconsRegular.printer, size: 18),
+                        label: const Text('Print'),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Get.back();
+                          controller.downloadInvoice(invoice);
+                        },
+                        icon: const Icon(PhosphorIconsRegular.downloadSimple, size: 18),
+                        label: const Text('Download PDF'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -352,13 +370,21 @@ class InvoiceView extends GetView<InvoiceController> {
     );
   }
 
-  Widget _detailRow(String label, String value, {bool isTotal = false}) {
+  Widget _detailRow(String label, String value, {bool isTotal = false, IconData? icon}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: AppTextStyles.bodyMd.copyWith(
-          fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
-        )),
+        Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 16, color: AppColors.neutralGray),
+              const SizedBox(width: 6),
+            ],
+            Text(label, style: AppTextStyles.bodyMd.copyWith(
+              fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
+            )),
+          ],
+        ),
         Text(value, style: (isTotal ? AppTextStyles.headingSm : AppTextStyles.bodyMd).copyWith(
           fontWeight: isTotal ? FontWeight.w700 : FontWeight.w600,
           color: isTotal ? AppColors.primary : AppColors.textPrimaryD,

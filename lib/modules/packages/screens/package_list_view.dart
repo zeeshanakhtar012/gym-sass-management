@@ -8,6 +8,7 @@ import '../../../core/helpers/formatters.dart';
 import '../../../widgets/app_drawer.dart';
 import '../controllers/package_model.dart';
 import '../controllers/package_controller.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class PackageListView extends GetView<PackageController> {
   const PackageListView({super.key});
@@ -207,7 +208,7 @@ class PackageListView extends GetView<PackageController> {
               final price = int.tryParse(priceCtrl.text.trim());
               final monthlyFee = int.tryParse(monthlyFeeCtrl.text.trim()) ?? 0;
               if (name.isEmpty || days == null || price == null) {
-                Get.snackbar('Error', 'Please fill all required fields');
+                AppPopup.error('Please fill all required fields');
                 return;
               }
               Get.back();

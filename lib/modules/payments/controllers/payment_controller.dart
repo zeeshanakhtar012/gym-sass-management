@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
 import '../../auth/controllers/auth_service.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class PaymentController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
@@ -56,7 +57,7 @@ class PaymentController extends GetxController {
     } catch (e, stack) {
       log('[PaymentController] loadPayments failed: $e');
       log('[PaymentController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load payments: $e');
+      AppPopup.error('Failed to load payments: $e');
     } finally {
       isLoading.value = false;
     }
@@ -172,11 +173,11 @@ class PaymentController extends GetxController {
 
       await loadPayments(data['gym_id']);
       log('[PaymentController] createPayment successful paymentId=$paymentId invoiceNumber=$invoiceNumber');
-      Get.snackbar('Success', 'Payment recorded successfully');
+      AppPopup.success('Payment recorded successfully');
     } catch (e, stack) {
       log('[PaymentController] createPayment failed: $e');
       log('[PaymentController] stack: $stack');
-      Get.snackbar('Error', 'Failed to create payment: $e');
+      AppPopup.error('Failed to create payment: $e');
     }
   }
 
@@ -188,11 +189,11 @@ class PaymentController extends GetxController {
       await db.delete('payments', where: 'payment_id = ?', whereArgs: [id]);
       await loadPayments(gymId);
       log('[PaymentController] deletePayment successful');
-      Get.snackbar('Success', 'Payment deleted');
+      AppPopup.success('Payment deleted');
     } catch (e, stack) {
       log('[PaymentController] deletePayment failed: $e');
       log('[PaymentController] stack: $stack');
-      Get.snackbar('Error', 'Failed to delete payment: $e');
+      AppPopup.error('Failed to delete payment: $e');
     }
   }
 

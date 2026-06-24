@@ -17,6 +17,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../auth/controllers/auth_service.dart';
 import 'member_repository.dart';
 import 'member_model.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class MemberFormController extends GetxController {
   final MemberRepository _memberRepository = Get.find<MemberRepository>();
@@ -146,11 +147,8 @@ class MemberFormController extends GetxController {
 
       if (result == null) {
         log('[MemberFormController] registerFingerprint - scan failed');
-        Get.snackbar('Error',
+        AppPopup.error(
           'Fingerprint enrollment failed. Ensure the scanner is connected.',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 5),
         );
         return;
       }
@@ -158,8 +156,7 @@ class MemberFormController extends GetxController {
       final rawImage = result['rawImage'] as List<int>?;
       if (rawImage == null || rawImage.length != AppConstants.fingerprintImageSize) {
         log('[MemberFormController] registerFingerprint - invalid raw image');
-        Get.snackbar('Error', 'Invalid fingerprint capture. Try again.',
-          backgroundColor: Colors.red, colorText: Colors.white);
+        AppPopup.error('Invalid fingerprint capture. Try again.');
         return;
       }
 
@@ -172,8 +169,7 @@ class MemberFormController extends GetxController {
 
       if (!_dartafis.isValidTemplate(serialisedTemplate)) {
         log('[MemberFormController] registerFingerprint - invalid template generated');
-        Get.snackbar('Error', 'Failed to generate a valid fingerprint template. Try again.',
-          backgroundColor: Colors.red, colorText: Colors.white);
+        AppPopup.error('Failed to generate a valid fingerprint template. Try again.');
         return;
       }
 
@@ -181,10 +177,7 @@ class MemberFormController extends GetxController {
       final isDuplicate = await _isDuplicateTemplate(serialisedTemplate);
       if (isDuplicate) {
         log('[MemberFormController] registerFingerprint - DUPLICATE fingerprint detected');
-        Get.snackbar('Duplicate Fingerprint',
-          'This fingerprint is already registered to another member.',
-          backgroundColor: Colors.red, colorText: Colors.white,
-          duration: const Duration(seconds: 6));
+        AppPopup.warning('This fingerprint is already registered to another member.');
         return;
       }
 
@@ -192,17 +185,11 @@ class MemberFormController extends GetxController {
       isFingerprintRegistered.value = true;
       log('[MemberFormController] registerFingerprint - success, '
           'templateLen=${serialisedTemplate.length}');
-      Get.snackbar(
-        'Fingerprint Registered',
-        'Template: ${serialisedTemplate.length} bytes',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
+      AppPopup.success('Fingerprint registered (${serialisedTemplate.length} bytes)');
     } catch (e, stack) {
       log('[MemberFormController] registerFingerprint - error: $e');
       log('[MemberFormController] stack: $stack');
-      Get.snackbar('Error', 'Failed to register fingerprint: $e');
+      AppPopup.error('Failed to register fingerprint: $e');
     }
   }
 
@@ -432,17 +419,21 @@ class MemberFormController extends GetxController {
     gymId = _resolveGymId(gymId);
     log('[MemberFormController] save called gymId=$gymId isEditing=$isEditing');
     if (fullNameController.text.trim().isEmpty) {
-      Get.snackbar('Error', 'Full name is required');
+      AppPopup.error('Full name is required');
       return;
     }
     if (phoneController.text.trim().isEmpty) {
-      Get.snackbar('Error', 'Phone number is required');
+      AppPopup.error('Phone number is required');
       return;
     }
 
     if (_isSaving) return;
     _isSaving = true;
     isLoading.value = true;
+
+    bool didCreate = false;
+    bool didUpdate = false;
+
     try {
       final now = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
       final joinDate = joiningDateController.text.trim().isNotEmpty
@@ -492,13 +483,8 @@ class MemberFormController extends GetxController {
         await _memberRepository.updateMember(updated);
         log('[MemberFormController] save - member updated successfully '
             'memberId=${updated.memberId} name="${updated.fullName}"');
-        Get.snackbar('Success', 'Member "${updated.fullName}" updated successfully',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-        );
-        log('[MemberFormController] save - navigating back after update');
-        Get.back(result: true);
+        AppPopup.success('Member "${updated.fullName}" updated successfully');
+        didUpdate = true;
       } else {
         final member = MemberModel(
           memberId: '',
@@ -528,23 +514,25 @@ class MemberFormController extends GetxController {
         final created = await _memberRepository.createMember(member);
         log('[MemberFormController] save - member created successfully '
             'memberId=${created.memberId} name="${created.fullName}"');
-        Get.snackbar('Success', 'Member "${created.fullName}" added successfully',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-        );
+        AppPopup.success('Member "${created.fullName}" added successfully');
         await _recordPayment(created, gymId);
-        resetForm();
-        log('[MemberFormController] save - navigating back after creation');
-        Get.back(result: true);
+        didCreate = true;
       }
     } catch (e, stack) {
       log('[MemberFormController] save failed: $e');
       log('[MemberFormController] stack: $stack');
-      Get.snackbar('Error', e.toString());
+      AppPopup.error(e.toString());
     } finally {
       _isSaving = false;
       isLoading.value = false;
+      if (didCreate) {
+        resetForm();
+        log('[MemberFormController] save - navigating back after creation');
+        Get.back(result: true);
+      } else if (didUpdate) {
+        log('[MemberFormController] save - navigating back after update');
+        Get.back(result: true);
+      }
     }
   }
 
@@ -601,10 +589,7 @@ class MemberFormController extends GetxController {
           final isDup = await _isDuplicateTemplate(serialised);
           if (isDup) {
             log('[MemberFormController] saveWithFingerprint - DUPLICATE fingerprint');
-            Get.snackbar('Duplicate Fingerprint',
-              'This fingerprint is already registered to another member.',
-              backgroundColor: Colors.red, colorText: Colors.white,
-              duration: const Duration(seconds: 5));
+            AppPopup.warning('This fingerprint is already registered to another member.');
             await save(gymId);
             return;
           }
@@ -612,26 +597,18 @@ class MemberFormController extends GetxController {
           isFingerprintRegistered.value = true;
           log('[MemberFormController] saveWithFingerprint - '
               'template extracted, len=${serialised.length}');
-          Get.snackbar('Fingerprint Captured',
-            '${serialised.length} bytes',
-            backgroundColor: Colors.green, colorText: Colors.white,
-            duration: const Duration(seconds: 5),
-          );
+          AppPopup.success('Fingerprint captured (${serialised.length} bytes)');
         } else {
           log('[MemberFormController] saveWithFingerprint - invalid template');
-          Get.snackbar('Warning', 'Fingerprint template invalid, saving without fingerprint',
-            backgroundColor: Colors.orange, colorText: Colors.white);
+          AppPopup.warning('Fingerprint template invalid, saving without fingerprint');
         }
       } else {
         log('[MemberFormController] saveWithFingerprint - invalid raw image');
-        Get.snackbar('Warning', 'Fingerprint data invalid, saving without fingerprint',
-          backgroundColor: Colors.orange, colorText: Colors.white);
+        AppPopup.warning('Fingerprint data invalid, saving without fingerprint');
       }
     } else {
       log('[MemberFormController] saveWithFingerprint - scan failed, saving without');
-      Get.snackbar('Info', 'Fingerprint scan failed, saving member without fingerprint',
-        backgroundColor: Colors.orange, colorText: Colors.white,
-      );
+      AppPopup.warning('Fingerprint scan failed, saving member without fingerprint');
     }
 
     await save(gymId);
@@ -714,14 +691,11 @@ class MemberFormController extends GetxController {
       await _memberRepository.updateMember(updated);
 
       log('[MemberFormController] _recordPayment - payment recorded invoice=$invoiceNumber');
-      Get.snackbar('Success', 'Payment collected successfully',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
+      AppPopup.success('Payment collected successfully');
     } catch (e, stack) {
       log('[MemberFormController] _recordPayment - error: $e');
       log('[MemberFormController] stack: $stack');
-      Get.snackbar('Error', 'Failed to record payment: $e');
+      AppPopup.error('Failed to record payment: $e');
     }
   }
 }

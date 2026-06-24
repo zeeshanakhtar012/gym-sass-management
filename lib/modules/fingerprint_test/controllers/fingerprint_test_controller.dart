@@ -8,6 +8,7 @@ import '../../../core/database/database_helper.dart';
 import '../../../core/services/dartafis_service.dart';
 import '../../../core/services/zkteco_scanner_service.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class FingerprintTestController extends GetxController {
   final ZKTecoBiometricService _scanner = ZKTecoBiometricService();
@@ -94,17 +95,16 @@ class FingerprintTestController extends GetxController {
     final firstBytes = (fb is Uint8List) ? fb.toList() : ((fb is List<int>) ? fb : <int>[]);
     if (trimmedLen == 0) {
       _log('Cannot save - template is empty');
-      Get.snackbar('Error', 'Template is empty, nothing to save');
+      AppPopup.error('Template is empty, nothing to save');
       return;
     }
     _log('Save template: method=${r['method']} len=$trimmedLen');
-    Get.snackbar('Template Data',
+    AppPopup.info(
       'Method: ${r['method']}\n'
       'Result: ${r['result']}\n'
       'RawLen: ${r['rawLen']}\n'
       'TrimmedLen: $trimmedLen\n'
       'First 16: ${firstBytes.take(16).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')}',
-      backgroundColor: Colors.blueGrey, colorText: Colors.white, duration: const Duration(seconds: 6),
     );
   }
 
@@ -208,10 +208,7 @@ class FingerprintTestController extends GetxController {
               if (bestIndex < rows.length) {
                 final member = rows[bestIndex];
                 _log('>>> ZK USER: ${member['full_name']} (${member['phone']})');
-                Get.snackbar('ZK Match Found',
-                  'User: ${member['full_name']}\nScore: $bestScore',
-                  backgroundColor: Colors.green, colorText: Colors.white,
-                  duration: const Duration(seconds: 10));
+                AppPopup.success('User: ${member['full_name']}\nScore: $bestScore');
               }
             } catch (e) {
               _log('DB lookup error: $e');
@@ -243,19 +240,14 @@ class FingerprintTestController extends GetxController {
             if (best.index < rows.length) {
               final member = rows[best.index];
               _log('>>> DARTAFIS USER: ${member['full_name']}');
-              Get.snackbar('Dartafis Match',
-                'User: ${member['full_name']}\nScore: ${best.score.toStringAsFixed(1)}',
-                backgroundColor: Colors.green, colorText: Colors.white,
-                duration: const Duration(seconds: 10));
+              AppPopup.success('User: ${member['full_name']}\nScore: ${best.score.toStringAsFixed(1)}');
             }
           } catch (e) {
             _log('DB lookup error: $e');
           }
         } else {
           _log('Dartafis: no match above threshold');
-          Get.snackbar('No Dartafis Match',
-            'Fingerprint not recognized',
-            backgroundColor: Colors.red, colorText: Colors.white);
+          AppPopup.error('Fingerprint not recognized');
         }
       } catch (e) {
         _log('Dartafis match error: $e');
@@ -320,8 +312,7 @@ class FingerprintTestController extends GetxController {
 
     if (fpMembers.isEmpty) {
       _log('No members with fingerprint data in DB');
-      Get.snackbar('No Data', 'No fingerprint members registered',
-        backgroundColor: Colors.orange, colorText: Colors.white);
+      AppPopup.info('No fingerprint members registered');
       isCapturing.value = false;
       return;
     }
@@ -339,17 +330,14 @@ class FingerprintTestController extends GetxController {
 
     if (matchResult == null || !matchResult.isMatched) {
       _log('No match found (threshold=${AppConstants.fingerprintMatchThreshold})');
-      Get.snackbar('No Match', 'Fingerprint not recognized. Try again.',
-        backgroundColor: Colors.red, colorText: Colors.white,
-        duration: const Duration(seconds: 5));
+      AppPopup.error('Fingerprint not recognized. Try again.');
       isCapturing.value = false;
       return;
     }
 
     if (matchResult.templateIndex < 0 || matchResult.templateIndex >= fpMembers.length) {
       _log('Match index ${matchResult.templateIndex} out of range');
-      Get.snackbar('Error', 'Invalid match result',
-        backgroundColor: Colors.red, colorText: Colors.white);
+      AppPopup.error('Invalid match result');
       isCapturing.value = false;
       return;
     }
@@ -361,10 +349,7 @@ class FingerprintTestController extends GetxController {
         '(index=${matchResult.templateIndex}, '
         'score=${matchResult.score.toStringAsFixed(1)}, '
         'threshold=${AppConstants.fingerprintMatchThreshold})');
-    Get.snackbar('MATCH FOUND',
-      'User: $name\nPhone: $phone\nScore: ${matchResult.score.toStringAsFixed(1)}',
-      backgroundColor: Colors.green, colorText: Colors.white,
-      duration: const Duration(seconds: 15));
+    AppPopup.success('User: $name\nPhone: $phone\nScore: ${matchResult.score.toStringAsFixed(1)}');
     isCapturing.value = false;
   }
 }

@@ -97,7 +97,7 @@ class MemberListView extends GetView<MemberListController> {
                   label: Text(labels[i]),
                   selected: selected,
                   onSelected: (_) => controller.statusFilter.value = filters[i],
-                  selectedColor: AppColors.primarySurface,
+                  // selectedColor: AppColors.primarySurface,
                   checkmarkColor: AppColors.primary,
                 ),
               );
@@ -232,7 +232,6 @@ class MemberListView extends GetView<MemberListController> {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(AppColors.surfaceElevated),
                   columns: const [
                     DataColumn(label: Text('')),
                     DataColumn(label: Text('Name')),

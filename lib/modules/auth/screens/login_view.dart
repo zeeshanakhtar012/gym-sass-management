@@ -37,17 +37,25 @@ class LoginView extends GetView<AuthController> {
       children: [
         const SizedBox(height: AppSpacing.xl),
         Center(
-          child: Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.primarySurface,
+          child: GestureDetector(
+            onLongPress: () {
+              controller.toggleLoginMode();
+              final isAdmin = !controller.isGymLogin.value;
+              Get.showSnackbar(GetSnackBar(
+                message: isAdmin ? 'Super Admin Enabled' : 'Super Admin Disabled',
+                duration: const Duration(seconds: 2),
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: isAdmin ? AppColors.primary : AppColors.textSecondaryD,
+              ));
+            },
+            child: ClipRRect(
               borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-            ),
-            child: const Icon(
-              PhosphorIconsRegular.barbell,
-              size: 44,
-              color: AppColors.primary,
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 100,
+                height: 100,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ),
@@ -64,16 +72,6 @@ class LoginView extends GetView<AuthController> {
           style: AppTextStyles.bodyMd.copyWith(color: AppColors.textSecondaryD),
         ),
         const SizedBox(height: AppSpacing.xl),
-
-        // Toggle Cards
-        Row(
-          children: [
-            Expanded(child: _buildToggleCard('Super Admin', false)),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(child: _buildToggleCard('Gym Login', true)),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
 
         // Error Banner
         Obx(() {
@@ -193,44 +191,4 @@ class LoginView extends GetView<AuthController> {
     );
   }
 
-  Widget _buildToggleCard(String label, bool isGymMode) {
-    return Obx(() {
-      final selected = controller.isGymLogin.value == isGymMode;
-      return GestureDetector(
-        onTap: controller.toggleLoginMode,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.primarySurface : AppColors.surfaceElevated,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            border: Border.all(
-              color: selected ? AppColors.primary : AppColors.borderDark,
-              width: selected ? 2 : 1,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isGymMode ? PhosphorIconsRegular.buildings : PhosphorIconsRegular.shieldStar,
-                size: 18,
-                color: selected ? AppColors.primary : AppColors.textSecondaryD,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                label,
-                style: AppTextStyles.label.copyWith(
-                  color: selected ? AppColors.primary : AppColors.textSecondaryD,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    });
-  }
 }

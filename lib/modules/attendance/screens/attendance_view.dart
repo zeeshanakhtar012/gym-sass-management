@@ -9,6 +9,7 @@ import '../../../core/helpers/responsive.dart';
 import '../../../core/helpers/formatters.dart';
 import '../../../widgets/app_drawer.dart';
 import '../controllers/attendance_controller.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class AttendanceView extends GetView<AttendanceController> {
   const AttendanceView({super.key});
@@ -511,18 +512,20 @@ class AttendanceView extends GetView<AttendanceController> {
 
   Future<void> _doCheckIn(String memberId, {String method = 'manual'}) async {
     final result = await controller.checkIn('', memberId, method: method);
-    Get.snackbar(
-      result.startsWith('Check-in recorded') ? 'Success' : 'Notice',
-      result,
-    );
+    if (result.startsWith('Check-in recorded')) {
+      AppPopup.success(result);
+    } else {
+      AppPopup.info(result);
+    }
   }
 
   Future<void> _doCheckOut(int attendanceId) async {
     final result = await controller.checkOut('', attendanceId);
-    Get.snackbar(
-      result.startsWith('Check-out recorded') ? 'Success' : 'Notice',
-      result,
-    );
+    if (result.startsWith('Check-out recorded')) {
+      AppPopup.success(result);
+    } else {
+      AppPopup.info(result);
+    }
   }
 
   Future<void> _fingerprintCheckIn() async {
@@ -579,12 +582,11 @@ class AttendanceView extends GetView<AttendanceController> {
       ),
     );
     if (result != null) {
-      Get.snackbar(
-        result.startsWith('Check-in recorded') ? 'Success' : 'Notice',
-        result,
-        backgroundColor: result.startsWith('Check-in recorded') ? Colors.green : Colors.orange,
-        colorText: Colors.white,
-      );
+      if (result.startsWith('Check-in recorded')) {
+        AppPopup.success(result);
+      } else {
+        AppPopup.info(result);
+      }
     }
   }
 }

@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:get/get.dart';
 import 'gym_repository.dart';
 import 'gym_model.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class GymListController extends GetxController {
   final GymRepository _gymRepository = Get.find<GymRepository>();
@@ -34,7 +35,7 @@ class GymListController extends GetxController {
     } catch (e, stack) {
       log('[GymListController] loadGyms failed: $e');
       log('[GymListController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load gyms');
+      AppPopup.error('Failed to load gyms');
     } finally {
       isLoading.value = false;
     }
@@ -49,7 +50,7 @@ class GymListController extends GetxController {
     } catch (e, stack) {
       log('[GymListController] toggleStatus failed: $e');
       log('[GymListController] stack: $stack');
-      Get.snackbar('Error', 'Failed to toggle gym status');
+      AppPopup.error('Failed to toggle gym status');
     }
   }
 
@@ -60,15 +61,15 @@ class GymListController extends GetxController {
       if (success) {
         gyms.removeWhere((g) => g.gymId == id);
         log('[GymListController] deleteGym successful');
-        Get.snackbar('Success', 'Gym deleted successfully');
+        AppPopup.success('Gym deleted successfully');
       } else {
         log('[GymListController] deleteGym failed - repository returned false');
-        Get.snackbar('Error', 'Failed to delete gym');
+        AppPopup.error('Failed to delete gym');
       }
     } catch (e, stack) {
       log('[GymListController] deleteGym failed: $e');
       log('[GymListController] stack: $stack');
-      Get.snackbar('Error', 'Failed to delete gym');
+      AppPopup.error('Failed to delete gym');
     }
   }
 

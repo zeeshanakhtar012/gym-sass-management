@@ -13,6 +13,7 @@ import '../../../core/database/database_helper.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/helpers/formatters.dart';
 import '../../auth/controllers/auth_service.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class ReportController extends GetxController {
   final RxMap<String, dynamic> reportData = <String, dynamic>{}.obs;
@@ -59,8 +60,10 @@ class ReportController extends GetxController {
 
       // --- Overview data ---
       final firstOfMonth = DateTime(now.year, now.month, 1);
-      final monthStart = firstOfMonth.toIso8601String().substring(0, 10);
-      final today = now.toIso8601String().substring(0, 10);
+      final monthStartStr = firstOfMonth.toIso8601String().substring(0, 10);
+      final todayStr = now.toIso8601String().substring(0, 10);
+      final useStart = startDate ?? monthStartStr;
+      final useEnd = endDate ?? todayStr;
 
       final memberCount = await db.rawQuery(
         'SELECT COUNT(*) as total FROM members WHERE gym_id = ?', [gymId],
@@ -72,23 +75,23 @@ class ReportController extends GetxController {
         "SELECT COUNT(*) as total FROM members WHERE gym_id = ? AND status = 'expired'", [gymId],
       );
       final attendanceThisMonth = await db.rawQuery(
-        'SELECT COUNT(*) as total FROM attendance WHERE gym_id = ? AND date >= ?', [gymId, monthStart],
+        'SELECT COUNT(*) as total FROM attendance WHERE gym_id = ? AND date BETWEEN ? AND ?', [gymId, useStart, useEnd],
       );
 
       final totalRevenue = await db.rawQuery(
         'SELECT COALESCE(SUM(total), 0) as total FROM payments WHERE gym_id = ?', [gymId],
       );
       final revenueThisMonth = await db.rawQuery(
-        'SELECT COALESCE(SUM(total), 0) as total FROM payments WHERE gym_id = ? AND payment_date >= ?',
-        [gymId, monthStart],
+        'SELECT COALESCE(SUM(total), 0) as total FROM payments WHERE gym_id = ? AND payment_date BETWEEN ? AND ?',
+        [gymId, useStart, useEnd],
       );
 
       final totalExpenses = await db.rawQuery(
         'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE gym_id = ?', [gymId],
       );
       final expensesThisMonth = await db.rawQuery(
-        'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE gym_id = ? AND expense_date >= ?',
-        [gymId, monthStart],
+        'SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE gym_id = ? AND expense_date BETWEEN ? AND ?',
+        [gymId, useStart, useEnd],
       );
 
       final pendingDues = await db.rawQuery(
@@ -107,7 +110,10 @@ class ReportController extends GetxController {
       final expMonth = (expensesThisMonth.first['total'] as num).toInt();
       final dues = (pendingDues.first['total'] as num).toInt();
 
-      final attPct = totalMembers > 0 ? (attCount / (totalMembers * now.day) * 100) : 0.0;
+      final startDt = DateTime.parse(useStart);
+      final endDt = DateTime.parse(useEnd);
+      final daysInPeriod = endDt.difference(startDt).inDays + 1;
+      final attPct = totalMembers > 0 ? (attCount / (totalMembers * daysInPeriod) * 100) : 0.0;
 
       // --- Members tab ---
       final byPackage = await db.rawQuery(
@@ -170,8 +176,8 @@ class ReportController extends GetxController {
         'monthlyExpenses': expMonth,
         'monthlyProfit': revMonth - expMonth,
         'pendingDues': dues,
-        'today': today,
-        'monthStart': monthStart,
+        'today': todayStr,
+        'monthStart': monthStartStr,
         'membersByPackage': byPackage,
         'membersByStatus': byStatus,
         'financialRevenue': financialRevenue,
@@ -185,7 +191,7 @@ class ReportController extends GetxController {
     } catch (e, stack) {
       log('[ReportController] loadAll failed: $e');
       log('[ReportController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load report: $e');
+      AppPopup.error('Failed to load report: $e');
     } finally {
       isLoading.value = false;
     }
@@ -340,9 +346,9 @@ class ReportController extends GetxController {
         SELECT p.*, m.full_name AS member_name
         FROM payments p
         LEFT JOIN members m ON p.member_id = m.member_id
-        WHERE p.gym_id = ?
+        WHERE p.gym_id = ? ${start != null && end != null ? 'AND p.payment_date BETWEEN ? AND ?' : ''}
         ORDER BY p.created_at DESC
-      ''', [gymId]);
+      ''', start != null && end != null ? [gymId, start, end] : [gymId]);
       for (final p in payments) {
         paySheet.appendRow([
           TextCellValue(p['payment_date'] as String? ?? ''),
@@ -358,7 +364,7 @@ class ReportController extends GetxController {
 
       final fileBytes = excel.save();
       if (fileBytes == null) {
-        Get.snackbar('Error', 'Failed to generate Excel file');
+        AppPopup.error('Failed to generate Excel file');
         return;
       }
 
@@ -368,16 +374,11 @@ class ReportController extends GetxController {
       await file.writeAsBytes(fileBytes);
       log('[ReportController] Excel saved to ${file.path}');
 
-      Get.snackbar(
-        'Success',
-        'Excel report saved to Downloads',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
-      );
+      AppPopup.success('Excel report saved to Downloads');
     } catch (e, stack) {
       log('[ReportController] exportExcel failed: $e');
       log('[ReportController] stack: $stack');
-      Get.snackbar('Error', 'Failed to export Excel: $e');
+      AppPopup.error('Failed to export Excel: $e');
     }
   }
 
@@ -395,7 +396,10 @@ class ReportController extends GetxController {
       final db = await DatabaseHelper.instance.database;
       final data = reportData;
 
-      // Fetch all data first
+      final range = selectedDateRange.value;
+      final pdfStart = range != null ? Formatters.date(range.start) : null;
+      final pdfEnd = range != null ? Formatters.date(range.end) : null;
+
       final members = await db.query('members',
         where: 'gym_id = ?', whereArgs: [gymId],
         orderBy: 'full_name ASC',
@@ -404,9 +408,9 @@ class ReportController extends GetxController {
         SELECT p.*, m.full_name AS member_name
         FROM payments p
         LEFT JOIN members m ON p.member_id = m.member_id
-        WHERE p.gym_id = ?
+        WHERE p.gym_id = ? ${pdfStart != null && pdfEnd != null ? 'AND p.payment_date BETWEEN ? AND ?' : ''}
         ORDER BY p.created_at DESC LIMIT 50
-      ''', [gymId]);
+      ''', pdfStart != null && pdfEnd != null ? [gymId, pdfStart, pdfEnd] : [gymId]);
 
       final nowStr = DateFormat('dd MMM yyyy HH:mm').format(DateTime.now());
 
@@ -444,6 +448,8 @@ class ReportController extends GetxController {
                     style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
               ),
               pw.Paragraph(text: 'Generated: $nowStr'),
+              if (pdfStart != null && pdfEnd != null)
+                pw.Paragraph(text: 'Period: $pdfStart to $pdfEnd'),
               pw.Divider(),
               pw.Header(level: 1, text: 'Overview'),
               pw.TableHelper.fromTextArray(
@@ -454,9 +460,9 @@ class ReportController extends GetxController {
                   ['Active Members', '${data['activeMembers'] ?? 0}'],
                   ['Expired Members', '${data['expiredMembers'] ?? 0}'],
                   ['Attendance %', '${(data['attendancePercent'] ?? 0.0).toStringAsFixed(1)}%'],
-                  ['Monthly Revenue', Formatters.currency(data['monthlyRevenue'] ?? 0)],
-                  ['Monthly Expenses', Formatters.currency(data['monthlyExpenses'] ?? 0)],
-                  ['Monthly Profit', Formatters.currency(data['monthlyProfit'] ?? 0)],
+                  ['Period Revenue', Formatters.currency(data['monthlyRevenue'] ?? 0)],
+                  ['Period Expenses', Formatters.currency(data['monthlyExpenses'] ?? 0)],
+                  ['Period Profit', Formatters.currency(data['monthlyProfit'] ?? 0)],
                   ['Pending Dues', Formatters.currency(data['pendingDues'] ?? 0)],
                 ],
               ),
@@ -473,9 +479,9 @@ class ReportController extends GetxController {
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
                 headers: ['Item', 'Amount'],
                 data: [
-                  ['Total Revenue', Formatters.currency(data['totalRevenue'] ?? 0)],
-                  ['Total Expenses', Formatters.currency(data['totalExpenses'] ?? 0)],
-                  ['Net Profit', Formatters.currency(data['monthlyProfit'] ?? 0)],
+                  ['Period Revenue', Formatters.currency(data['monthlyRevenue'] ?? 0)],
+                  ['Period Expenses', Formatters.currency(data['monthlyExpenses'] ?? 0)],
+                  ['Period Profit', Formatters.currency(data['monthlyProfit'] ?? 0)],
                 ],
               ),
               pw.SizedBox(height: 16),
@@ -498,16 +504,11 @@ class ReportController extends GetxController {
       );
 
       log('[ReportController] PDF shared successfully');
-      Get.snackbar(
-        'Success',
-        'PDF report generated successfully',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
-      );
+      AppPopup.success('PDF report generated successfully');
     } catch (e, stack) {
       log('[ReportController] exportPdf failed: $e');
       log('[ReportController] stack: $stack');
-      Get.snackbar('Error', 'Failed to export PDF: $e');
+      AppPopup.error('Failed to export PDF: $e');
     }
   }
 }

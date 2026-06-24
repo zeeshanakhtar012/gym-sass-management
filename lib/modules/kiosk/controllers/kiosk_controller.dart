@@ -11,6 +11,7 @@ import '../../../core/services/dartafis_service.dart';
 import '../../../core/services/zkteco_scanner_service.dart';
 import '../../auth/controllers/auth_service.dart';
 import '../../members/controllers/member_model.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class KioskController extends GetxController {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
@@ -231,7 +232,7 @@ class KioskController extends GetxController {
     } catch (e, stack) {
       log('[KioskController] loadMembers failed: $e');
       log('[KioskController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load members: $e');
+      AppPopup.error('Failed to load members: $e');
     } finally {
       isLoading.value = false;
     }
@@ -256,7 +257,7 @@ class KioskController extends GetxController {
       );
       if (existing.isNotEmpty) {
         log('[KioskController] checkInMember - already checked in today');
-        Get.snackbar('Notice', 'Member already checked in today');
+        AppPopup.info('Member already checked in today');
         return;
       }
 
@@ -290,7 +291,7 @@ class KioskController extends GetxController {
     } catch (e, stack) {
       log('[KioskController] checkInMember failed: $e');
       log('[KioskController] stack: $stack');
-      Get.snackbar('Error', 'Check-in failed: $e');
+      AppPopup.error('Check-in failed: $e');
     }
   }
 

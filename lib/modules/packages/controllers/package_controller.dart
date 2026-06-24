@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../auth/controllers/auth_service.dart';
 import 'package_repository.dart';
 import 'package_model.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class PackageController extends GetxController {
   final PackageRepository _repository = Get.find<PackageRepository>();
@@ -41,7 +42,7 @@ class PackageController extends GetxController {
     } catch (e, stack) {
       log('[PackageController] loadPackages failed: $e');
       log('[PackageController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load packages');
+      AppPopup.error('Failed to load packages');
     } finally {
       isLoading.value = false;
     }
@@ -52,18 +53,18 @@ class PackageController extends GetxController {
     final resolved = pkg.copyWith(gymId: _resolveGymId(pkg.gymId));
     if (resolved.gymId.isEmpty) {
       log('[PackageController] createPackage - no gymId');
-      Get.snackbar('Error', 'No gym selected');
+      AppPopup.error('No gym selected');
       return;
     }
     try {
       final created = await _repository.create(resolved);
       packages.insert(0, created);
       log('[PackageController] createPackage successful id=${created.packageId}');
-      Get.snackbar('Success', 'Package created successfully');
+      AppPopup.success('Package created successfully');
     } catch (e, stack) {
       log('[PackageController] createPackage failed: $e');
       log('[PackageController] stack: $stack');
-      Get.snackbar('Error', 'Failed to create package');
+      AppPopup.error('Failed to create package');
     }
   }
 
@@ -72,7 +73,7 @@ class PackageController extends GetxController {
     final resolved = pkg.copyWith(gymId: _resolveGymId(pkg.gymId));
     if (resolved.gymId.isEmpty) {
       log('[PackageController] updatePackage - no gymId');
-      Get.snackbar('Error', 'No gym selected');
+      AppPopup.error('No gym selected');
       return;
     }
     try {
@@ -80,11 +81,11 @@ class PackageController extends GetxController {
       final index = packages.indexWhere((p) => p.packageId == resolved.packageId);
       if (index != -1) packages[index] = resolved;
       log('[PackageController] updatePackage successful');
-      Get.snackbar('Success', 'Package updated successfully');
+      AppPopup.success('Package updated successfully');
     } catch (e, stack) {
       log('[PackageController] updatePackage failed: $e');
       log('[PackageController] stack: $stack');
-      Get.snackbar('Error', 'Failed to update package');
+      AppPopup.error('Failed to update package');
     }
   }
 
@@ -95,16 +96,16 @@ class PackageController extends GetxController {
       if (canDelete) {
         packages.removeWhere((p) => p.packageId == id);
         log('[PackageController] deletePackage successful');
-        Get.snackbar('Success', 'Package deleted successfully');
+        AppPopup.success('Package deleted successfully');
       } else {
         log('[PackageController] deletePackage - has active members');
-        Get.snackbar('Error', 'Cannot delete: package has active members');
+        AppPopup.error('Cannot delete: package has active members');
       }
       return canDelete;
     } catch (e, stack) {
       log('[PackageController] deletePackage failed: $e');
       log('[PackageController] stack: $stack');
-      Get.snackbar('Error', 'Failed to delete package');
+      AppPopup.error('Failed to delete package');
       return false;
     }
   }

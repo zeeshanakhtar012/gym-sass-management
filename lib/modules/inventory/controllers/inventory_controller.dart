@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/database_helper.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class InventoryController extends GetxController {
   final RxList<Map<String, dynamic>> items = <Map<String, dynamic>>[].obs;
@@ -54,7 +55,7 @@ class InventoryController extends GetxController {
     } catch (e, stack) {
       log('[InventoryController] loadItems failed: $e');
       log('[InventoryController] stack: $stack');
-      Get.snackbar('Error', 'Failed to load inventory');
+      AppPopup.error('Failed to load inventory');
     } finally {
       isLoading.value = false;
     }
@@ -79,12 +80,12 @@ class InventoryController extends GetxController {
       });
       await loadItems(data['gym_id']);
       log('[InventoryController] createItem successful id=$id');
-      Get.snackbar('Success', 'Item added successfully');
+      AppPopup.success('Item added successfully');
       return true;
     } catch (e, stack) {
       log('[InventoryController] createItem failed: $e');
       log('[InventoryController] stack: $stack');
-      Get.snackbar('Error', 'Failed to add item');
+      AppPopup.error('Failed to add item');
       return false;
     }
   }
@@ -103,12 +104,12 @@ class InventoryController extends GetxController {
       }, where: 'item_id = ?', whereArgs: [data['item_id']]);
       await loadItems(data['gym_id']);
       log('[InventoryController] updateItem successful');
-      Get.snackbar('Success', 'Item updated successfully');
+      AppPopup.success('Item updated successfully');
       return true;
     } catch (e, stack) {
       log('[InventoryController] updateItem failed: $e');
       log('[InventoryController] stack: $stack');
-      Get.snackbar('Error', 'Failed to update item');
+      AppPopup.error('Failed to update item');
       return false;
     }
   }
@@ -120,12 +121,12 @@ class InventoryController extends GetxController {
       await db.delete('inventory', where: 'item_id = ?', whereArgs: [id]);
       items.removeWhere((i) => i['item_id'] == id);
       log('[InventoryController] deleteItem successful');
-      Get.snackbar('Success', 'Item deleted successfully');
+      AppPopup.success('Item deleted successfully');
       return true;
     } catch (e, stack) {
       log('[InventoryController] deleteItem failed: $e');
       log('[InventoryController] stack: $stack');
-      Get.snackbar('Error', 'Failed to delete item');
+      AppPopup.error('Failed to delete item');
       return false;
     }
   }

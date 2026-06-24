@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../auth/controllers/auth_service.dart';
 import 'gym_repository.dart';
 import 'gym_model.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class GymFormController extends GetxController {
   final GymRepository _gymRepository = Get.find<GymRepository>();
@@ -82,22 +83,22 @@ class GymFormController extends GetxController {
     log('[GymFormController] save called isEditing=$isEditing');
     if (nameController.text.trim().isEmpty) {
       log('[GymFormController] save - name empty');
-      Get.snackbar('Error', 'Gym name is required');
+      AppPopup.error('Gym name is required');
       return;
     }
     if (phoneController.text.trim().isEmpty) {
       log('[GymFormController] save - phone empty');
-      Get.snackbar('Error', 'Phone number is required');
+      AppPopup.error('Phone number is required');
       return;
     }
     if (!isEditing && passwordController.text.trim().isEmpty) {
       log('[GymFormController] save - password empty');
-      Get.snackbar('Error', 'Password is required for new gym');
+      AppPopup.error('Password is required for new gym');
       return;
     }
     if (!isEditing && passwordController.text != confirmPasswordController.text) {
       log('[GymFormController] save - passwords do not match');
-      Get.snackbar('Error', 'Passwords do not match');
+      AppPopup.error('Passwords do not match');
       return;
     }
 
@@ -171,7 +172,7 @@ class GymFormController extends GetxController {
     } catch (e, stack) {
       log('[GymFormController] save failed: $e');
       log('[GymFormController] stack: $stack');
-      Get.snackbar('Error', e.toString());
+      AppPopup.error(e.toString());
     } finally {
       isLoading.value = false;
     }

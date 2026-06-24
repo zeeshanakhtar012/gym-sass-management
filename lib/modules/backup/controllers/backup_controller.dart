@@ -12,6 +12,7 @@ import '../../../core/database/database_helper.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class BackupController extends GetxController {
   final BackupService _backupService = BackupService.instance;
@@ -66,11 +67,11 @@ class BackupController extends GetxController {
       lastBackupTime.value = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
       await getBackupFiles();
       log('[BackupController] createBackup successful - filePath=$filePath');
-      Get.snackbar('Success', 'Backup created successfully');
+      AppPopup.success('Backup created successfully');
     } catch (e, stack) {
       log('[BackupController] createBackup failed: $e');
       log('[BackupController] stack: $stack');
-      Get.snackbar('Error', 'Backup failed: $e');
+      AppPopup.error('Backup failed: $e');
     } finally {
       isLoading.value = false;
       progress.value = 0.0;
@@ -128,10 +129,10 @@ class BackupController extends GetxController {
         progress.value = 1.0;
         if (success) {
           log('[BackupController] restoreBackup successful');
-          Get.snackbar('Success', 'Backup restored successfully');
+          AppPopup.success('Backup restored successfully');
         } else {
           log('[BackupController] restoreBackup failed - service returned false');
-          Get.snackbar('Error', 'Failed to restore backup');
+          AppPopup.error('Failed to restore backup');
         }
       } finally {
         isLoading.value = false;
@@ -140,7 +141,7 @@ class BackupController extends GetxController {
     } catch (e, stack) {
       log('[BackupController] restoreBackup failed: $e');
       log('[BackupController] stack: $stack');
-      Get.snackbar('Error', 'Restore failed: $e');
+      AppPopup.error('Restore failed: $e');
     }
   }
 
@@ -183,14 +184,14 @@ class BackupController extends GetxController {
         await file.delete();
         backupFiles.removeWhere((f) => f['path'] == filePath);
         log('[BackupController] deleteBackupFile successful');
-        Get.snackbar('Success', 'Backup file deleted');
+        AppPopup.success('Backup file deleted');
       } else {
         log('[BackupController] deleteBackupFile - file not found');
       }
     } catch (e, stack) {
       log('[BackupController] deleteBackupFile failed: $e');
       log('[BackupController] stack: $stack');
-      Get.snackbar('Error', 'Failed to delete backup: $e');
+      AppPopup.error('Failed to delete backup: $e');
     }
   }
 

@@ -1,9 +1,13 @@
 import 'dart:io';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../../core/database/database_helper.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -14,6 +18,7 @@ import '../controllers/member_stats.dart';
 import '../controllers/member_repository.dart';
 import '../controllers/member_list_controller.dart';
 import 'member_form_view.dart';
+import '../../../widgets/popups/app_popup.dart';
 
 class MemberDetailView extends StatefulWidget {
   final MemberModel? member;
@@ -55,13 +60,20 @@ class _MemberDetailViewState extends State<MemberDetailView> {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(PhosphorIconsRegular.arrowLeft),
-            onPressed: () => Get.back(),
-          ),
-          title: Text(member.fullName),
-          bottom: const TabBar(
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(PhosphorIconsRegular.arrowLeft),
+              onPressed: () => Get.back(),
+            ),
+            title: Text(member.fullName),
+            actions: [
+              IconButton(
+                icon: const Icon(PhosphorIconsRegular.downloadSimple),
+                tooltip: 'Download PDF Report',
+                onPressed: () => _downloadMemberPdf(member),
+              ),
+            ],
+            bottom: const TabBar(
             isScrollable: true,
             tabs: [
               Tab(text: 'Overview'),
@@ -508,6 +520,19 @@ class _MemberDetailViewState extends State<MemberDetailView> {
                 ),
               ],
             ),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _downloadMemberPdf(member),
+                icon: const Icon(PhosphorIconsRegular.downloadSimple, size: 18),
+                label: const Text('Download PDF Report'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -642,6 +667,177 @@ class _MemberDetailViewState extends State<MemberDetailView> {
         : const Center(child: Text('No payment data available'));
   }
 
+  Future<void> _downloadMemberPdf(MemberModel member) async {
+    log('[MemberDetail] _downloadMemberPdf called for ${member.memberId}');
+    try {
+      final db = await DatabaseHelper.instance.database;
+
+      final attendanceRows = await db.query('attendance',
+        where: 'member_id = ?',
+        whereArgs: [member.memberId],
+        orderBy: 'date DESC',
+        limit: 200,
+      );
+
+      final paymentRows = await db.query('payments',
+        where: 'member_id = ?',
+        whereArgs: [member.memberId],
+        orderBy: 'payment_date DESC',
+        limit: 200,
+      );
+
+      final nowStr = DateFormat('dd MMM yyyy HH:mm').format(DateTime.now());
+
+      final pdf = pw.Document();
+
+      // Page 1: Overview — personal info, membership, stats
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: pw.EdgeInsets.all(32),
+          build: (context) {
+            return [
+              pw.Header(
+                level: 0,
+                child: pw.Text('Member Report',
+                    style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+              ),
+              pw.Text(member.fullName,
+                  style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Text('Generated: $nowStr',
+                  style: pw.TextStyle(fontSize: 9, color: PdfColors.grey500)),
+              pw.Divider(),
+
+              pw.Header(level: 1, text: 'Personal Information'),
+              _pdfRow('Name', member.fullName),
+              _pdfRow('Father Name', member.fatherName ?? '-'),
+              _pdfRow('Phone', member.phone ?? '-'),
+              _pdfRow('CNIC', member.cnic ?? '-'),
+              _pdfRow('Gender', member.gender ?? '-'),
+              _pdfRow('Address', member.address ?? '-'),
+              _pdfRow('Registered', Formatters.shortDate(DateTime.tryParse(member.registrationDate))),
+              pw.SizedBox(height: 8),
+
+              pw.Header(level: 1, text: 'Membership'),
+              _pdfRow('Package', member.packageId ?? '-'),
+              _pdfRow('Status', member.status.toUpperCase()),
+              _pdfRow('Start Date', member.startDate != null ? Formatters.shortDate(DateTime.tryParse(member.startDate!)) : '-'),
+              _pdfRow('Expiry Date', member.expiryDate != null ? Formatters.shortDate(DateTime.tryParse(member.expiryDate!)) : '-'),
+              if (member.expiryDate != null)
+                _pdfRow('Remaining', Formatters.remainingDays(
+                    DateTime.parse(member.expiryDate!).difference(DateTime.now()).inDays)),
+              pw.SizedBox(height: 8),
+
+              pw.Header(level: 1, text: 'Physical Stats'),
+              _pdfRow('Height', member.height != null ? '${member.height} cm' : '-'),
+              _pdfRow('Weight', member.weight != null ? '${member.weight} kg' : '-'),
+              _pdfRow('BMI', member.bmi != null ? member.bmi!.toStringAsFixed(1) : '-'),
+              _pdfRow('Fitness Goal', member.fitnessGoal ?? '-'),
+              pw.SizedBox(height: 8),
+
+              if (_stats != null) ...[
+                pw.Header(level: 1, text: 'Attendance Summary'),
+                _pdfRow('This Month', '${_stats!.currentMonthAttendance}'),
+                _pdfRow('Last Month', '${_stats!.previousMonthAttendance}'),
+                _pdfRow('Lifetime', '${_stats!.lifetimeAttendance}'),
+                _pdfRow('Avg / Month', _stats!.avgVisitsPerMonth.toStringAsFixed(1)),
+                if (_stats!.lastVisit != null)
+                  _pdfRow('Last Visit', Formatters.shortDate(_stats!.lastVisit)),
+                _pdfRow('Attendance %', Formatters.attendancePercent(
+                    _stats!.lifetimeAttendance, _stats!.totalVisits)),
+                pw.SizedBox(height: 8),
+
+                pw.Header(level: 1, text: 'Payment Summary'),
+                _pdfRow('Total Paid', Formatters.currency(_stats!.totalPaid)),
+                _pdfRow('Total Due', Formatters.currency(_stats!.totalDue)),
+                if (_stats!.lastPaymentDate != null)
+                  _pdfRow('Last Payment', Formatters.shortDate(_stats!.lastPaymentDate)),
+              ],
+            ];
+          },
+        ),
+      );
+
+      // Page 2: Attendance records
+      if (attendanceRows.isNotEmpty) {
+        pdf.addPage(
+          pw.MultiPage(
+            pageFormat: PdfPageFormat.a4,
+            margin: pw.EdgeInsets.all(32),
+            build: (context) => [
+              pw.Header(level: 1, text: 'Attendance Records'),
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
+                cellStyle: pw.TextStyle(fontSize: 9),
+                headers: ['Date', 'Check In', 'Check Out', 'Method'],
+                data: attendanceRows.map((r) => [
+                  r['date'] as String? ?? '',
+                  (r['check_in'] as String? ?? '').substring(0, 5),
+                  r['check_out'] != null
+                      ? (r['check_out'] as String).substring(0, 5)
+                      : '-',
+                  r['method'] as String? ?? 'manual',
+                ]).toList(),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // Page 3: Payment records
+      if (paymentRows.isNotEmpty) {
+        pdf.addPage(
+          pw.MultiPage(
+            pageFormat: PdfPageFormat.a4,
+            margin: pw.EdgeInsets.all(32),
+            build: (context) => [
+              pw.Header(level: 1, text: 'Payment Records'),
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
+                cellStyle: pw.TextStyle(fontSize: 9),
+                headers: ['Date', 'Method', 'Amount', 'Discount', 'Tax', 'Total', 'Remarks'],
+                data: paymentRows.map((p) => [
+                  p['payment_date'] as String? ?? '',
+                  p['method'] as String? ?? '-',
+                  Formatters.currency(p['amount'] as int? ?? 0),
+                  Formatters.currency(p['discount'] as int? ?? 0),
+                  Formatters.currency(p['tax'] as int? ?? 0),
+                  Formatters.currency(p['total'] as int? ?? 0),
+                  p['remarks'] as String? ?? '',
+                ]).toList(),
+              ),
+            ],
+          ),
+        );
+      }
+
+      final bytes = await pdf.save();
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: '${member.fullName.replaceAll(' ', '_')}_Report.pdf',
+      );
+      log('[MemberDetail] _downloadMemberPdf successful');
+    } catch (e, stack) {
+      log('[MemberDetail] _downloadMemberPdf failed: $e');
+      log('[MemberDetail] stack: $stack');
+      AppPopup.error('Failed to generate PDF: $e');
+    }
+  }
+
+  pw.Widget _pdfRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text('$label:',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+          pw.Text(value, style: const pw.TextStyle(fontSize: 10)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAvatar(MemberModel member, {double radius = 24}) {
     if (member.photoPath != null && member.photoPath!.isNotEmpty) {
       return CircleAvatar(
@@ -730,7 +926,7 @@ class _MemberDetailViewState extends State<MemberDetailView> {
           where: 'attendance_id = ?',
           whereArgs: [existing.first['attendance_id']],
         );
-        Get.snackbar('Success', '${member.fullName} checked out at $now');
+        AppPopup.success('${member.fullName} checked out at $now');
       }
     } else {
       await db.insert('attendance', {
@@ -741,12 +937,7 @@ class _MemberDetailViewState extends State<MemberDetailView> {
         'method': 'manual',
         'created_at': DateTime.now().toIso8601String(),
       });
-      Get.snackbar(
-        'Success',
-        '${member.fullName} checked in at $now',
-        backgroundColor: AppColors.success,
-        colorText: Colors.white,
-      );
+      AppPopup.success('${member.fullName} checked in at $now');
     }
   }
 
@@ -759,7 +950,7 @@ class _MemberDetailViewState extends State<MemberDetailView> {
     );
 
     if (rows.isEmpty) {
-      Get.snackbar('No Payments', 'No payment records found for ${member.fullName}');
+      AppPopup.info('No payment records found for ${member.fullName}');
       return;
     }
 
